@@ -37,7 +37,28 @@ import {
   HealthGoal,
   HealthReminder,
   HealthDashboardData,
-  HealthReportData
+  HealthReportData,
+  Account,
+  Transaction,
+  Income,
+  Expense,
+  Budget,
+  BudgetCategory,
+  SavingsGoal,
+  Bill,
+  Subscription,
+  TransactionCategory,
+  TransactionTag,
+  RecurringTransaction,
+  FinancialReport,
+  FinanceDashboardData,
+  FinanceReportData,
+  AccountType,
+  TransactionType,
+  RecurringFrequency,
+  BillStatus,
+  SubscriptionStatus,
+  ReportType
 } from "@lifesync/types";
 
 // ==========================================
@@ -1595,6 +1616,620 @@ export const HealthService = {
       success: true,
       message: "Health report generated successfully",
       data,
+    };
+  }
+};
+
+// ==========================================
+// PERSONAL FINANCE IN-MEMORY DATABASE STORES
+// ==========================================
+
+export let mockAccounts: Account[] = [
+  {
+    id: "acc-1",
+    userId: "u-1",
+    name: "Bank Account (Chase)",
+    type: "BANK",
+    balance: 5400.0,
+    currency: "USD",
+    isDefault: true,
+    isArchived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "acc-2",
+    userId: "u-1",
+    name: "Cash Wallet",
+    type: "CASH",
+    balance: 150.0,
+    currency: "USD",
+    isDefault: false,
+    isArchived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "acc-3",
+    userId: "u-1",
+    name: "Credit Card (Visa)",
+    type: "CREDIT_CARD",
+    balance: -350.0,
+    currency: "USD",
+    isDefault: false,
+    isArchived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+];
+
+export let mockTransactionCategories: TransactionCategory[] = [
+  { id: "cat-f-1", userId: null, name: "Food", type: "EXPENSE", color: "#3B82F6", icon: "Utensils", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "cat-f-2", userId: null, name: "Shopping", type: "EXPENSE", color: "#EC4899", icon: "ShoppingBag", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "cat-f-3", userId: null, name: "Transport", type: "EXPENSE", color: "#F59E0B", icon: "Car", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "cat-f-4", userId: null, name: "Rent", type: "EXPENSE", color: "#EF4444", icon: "Home", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "cat-f-5", userId: null, name: "Utilities", type: "EXPENSE", color: "#10B981", icon: "Zap", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "cat-f-6", userId: null, name: "Entertainment", type: "EXPENSE", color: "#8B5CF6", icon: "Tv", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "cat-f-7", userId: null, name: "Salary", type: "INCOME", color: "#10B981", icon: "DollarSign", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "cat-f-8", userId: null, name: "Freelance", type: "INCOME", color: "#3B82F6", icon: "Laptop", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockTransactionTags: TransactionTag[] = [
+  { id: "tag-1", userId: "u-1", name: "Necessity", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "tag-2", userId: "u-1", name: "Leisure", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockTransactions: Transaction[] = [
+  {
+    id: "tx-1",
+    userId: "u-1",
+    accountId: "acc-1",
+    toAccountId: null,
+    categoryId: "cat-f-7",
+    amount: 4000.0,
+    type: "INCOME",
+    description: "Monthly salary payout",
+    date: new Date(Date.now() - 5 * 24 * 3600000).toISOString(),
+    isRecurring: true,
+    recurringTransactionId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "tx-2",
+    userId: "u-1",
+    accountId: "acc-1",
+    toAccountId: null,
+    categoryId: "cat-f-8",
+    amount: 1200.0,
+    type: "INCOME",
+    description: "Mobile app consulting freelance",
+    date: new Date(Date.now() - 3 * 24 * 3600000).toISOString(),
+    isRecurring: false,
+    recurringTransactionId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "tx-3",
+    userId: "u-1",
+    accountId: "acc-1",
+    toAccountId: null,
+    categoryId: "cat-f-4",
+    amount: 1500.0,
+    type: "EXPENSE",
+    description: "Apartment Rent payment",
+    date: new Date(Date.now() - 12 * 24 * 3600000).toISOString(),
+    isRecurring: true,
+    recurringTransactionId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "tx-4",
+    userId: "u-1",
+    accountId: "acc-2",
+    toAccountId: null,
+    categoryId: "cat-f-1",
+    amount: 120.0,
+    type: "EXPENSE",
+    description: "Whole Foods grocery shopping",
+    date: new Date(Date.now() - 1 * 24 * 3600000).toISOString(),
+    isRecurring: false,
+    recurringTransactionId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "tx-5",
+    userId: "u-1",
+    accountId: "acc-1",
+    toAccountId: null,
+    categoryId: "cat-f-5",
+    amount: 80.0,
+    type: "EXPENSE",
+    description: "Electric power company bill",
+    date: new Date(Date.now() - 2 * 24 * 3600000).toISOString(),
+    isRecurring: true,
+    recurringTransactionId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+];
+
+export let mockIncomes: Income[] = [
+  { id: "inc-1", userId: "u-1", transactionId: "tx-1", source: "Salary", notes: "Main job", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "inc-2", userId: "u-1", transactionId: "tx-2", source: "Freelance", notes: "Side gig", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockExpenses: Expense[] = [
+  { id: "exp-1", userId: "u-1", transactionId: "tx-3", merchant: "Landlord Inc", paymentMethod: "ACH", location: "New York", notes: "Rent", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "exp-2", userId: "u-1", transactionId: "tx-4", merchant: "Whole Foods", paymentMethod: "Cash", location: "New York", notes: "Grocery", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "exp-3", userId: "u-1", transactionId: "tx-5", merchant: "ConEd", paymentMethod: "Direct Debit", location: "New York", notes: "Electricity", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockBudgets: Budget[] = [
+  {
+    id: "b-1",
+    userId: "u-1",
+    name: "July Budget Limit",
+    amount: 2000.0,
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
+    endDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+];
+
+export let mockBudgetCategories: BudgetCategory[] = [
+  { id: "bc-1", budgetId: "b-1", categoryId: "cat-f-1", limitAmount: 400.0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "bc-2", budgetId: "b-1", categoryId: "cat-f-4", limitAmount: 1500.0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "bc-3", budgetId: "b-1", categoryId: "cat-f-6", limitAmount: 200.0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockSavingsGoals: SavingsGoal[] = [
+  { id: "sg-1", userId: "u-1", name: "Rainy Day Savings Fund", targetAmount: 5000.0, currentAmount: 2500.0, deadline: new Date(Date.now() + 90 * 24 * 3600000).toISOString(), status: "ACTIVE", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "sg-2", userId: "u-1", name: "New Macbook Pro M4", targetAmount: 1200.0, currentAmount: 400.0, deadline: new Date(Date.now() + 45 * 24 * 3600000).toISOString(), status: "ACTIVE", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockBills: Bill[] = [
+  { id: "bill-1", userId: "u-1", name: "Electricity Power Bill", amount: 120.0, dueDate: new Date(Date.now() + 5 * 24 * 3600000).toISOString(), isRecurring: true, recurringInterval: "MONTHLY", status: "UNPAID", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "bill-2", userId: "u-1", name: "Highspeed Wifi Fiber Bill", amount: 50.0, dueDate: new Date(Date.now() - 2 * 24 * 3600000).toISOString(), isRecurring: true, recurringInterval: "MONTHLY", status: "PAID", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockSubscriptions: Subscription[] = [
+  { id: "sub-1", userId: "u-1", name: "Netflix Premium plan", amount: 15.99, billingCycle: "MONTHLY", renewalDate: new Date(Date.now() + 15 * 24 * 3600000).toISOString(), categoryId: "cat-f-6", status: "ACTIVE", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "sub-2", userId: "u-1", name: "Spotify Premium Family", amount: 10.99, billingCycle: "MONTHLY", renewalDate: new Date(Date.now() + 8 * 24 * 3600000).toISOString(), categoryId: "cat-f-6", status: "ACTIVE", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "sub-3", userId: "u-1", name: "GitHub Copilot for Developers", amount: 10.00, billingCycle: "MONTHLY", renewalDate: new Date(Date.now() + 3 * 24 * 3600000).toISOString(), categoryId: "cat-f-8", status: "ACTIVE", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockRecurringTransactions: RecurringTransaction[] = [];
+export let mockFinancialReports: FinancialReport[] = [];
+
+// ==========================================
+// PERSONAL FINANCE SERVICES
+// ==========================================
+
+export const AccountService = {
+  async getAccounts(): Promise<ApiResponse<Account[]>> {
+    return { success: true, message: "Accounts loaded", data: mockAccounts.filter(a => !a.isArchived) };
+  },
+
+  async addAccount(data: { name: string; type: AccountType; balance: number; currency?: string }): Promise<ApiResponse<Account>> {
+    const newAcc: Account = {
+      id: "acc-" + Math.floor(Math.random() * 100000),
+      userId: "u-1",
+      name: data.name,
+      type: data.type,
+      balance: data.balance || 0,
+      currency: data.currency || "USD",
+      isDefault: mockAccounts.length === 0,
+      isArchived: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    mockAccounts.push(newAcc);
+    return { success: true, message: "Account created successfully", data: newAcc };
+  },
+
+  async deleteAccount(id: string): Promise<ApiResponse> {
+    mockAccounts = mockAccounts.filter(a => a.id !== id);
+    return { success: true, message: "Account deleted successfully" };
+  }
+};
+
+export const TransactionService = {
+  async getTransactions(): Promise<ApiResponse<Transaction[]>> {
+    const enriched = mockTransactions.map(tx => ({
+      ...tx,
+      category: mockTransactionCategories.find(c => c.id === tx.categoryId) || null,
+      account: mockAccounts.find(a => a.id === tx.accountId) || null,
+    }));
+    return { success: true, message: "Transactions loaded", data: enriched as any };
+  },
+
+  async getCategories(): Promise<ApiResponse<TransactionCategory[]>> {
+    return { success: true, message: "Categories loaded", data: mockTransactionCategories };
+  },
+
+  async getTags(): Promise<ApiResponse<TransactionTag[]>> {
+    return { success: true, message: "Tags loaded", data: mockTransactionTags };
+  },
+
+  async addTransaction(data: {
+    accountId: string;
+    amount: number;
+    type: TransactionType;
+    categoryId?: string | null;
+    description?: string | null;
+    toAccountId?: string | null;
+    date?: string;
+  }): Promise<ApiResponse<Transaction>> {
+    const txId = "tx-" + Math.floor(Math.random() * 100000);
+    const newTx: Transaction = {
+      id: txId,
+      userId: "u-1",
+      accountId: data.accountId,
+      toAccountId: data.toAccountId || null,
+      categoryId: data.categoryId || null,
+      amount: data.amount,
+      type: data.type,
+      description: data.description || null,
+      date: data.date || new Date().toISOString(),
+      isRecurring: false,
+      recurringTransactionId: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Modify corresponding account balances
+    const acc = mockAccounts.find(a => a.id === data.accountId);
+    if (acc) {
+      if (data.type === "INCOME") {
+        acc.balance += data.amount;
+        // Seed mockIncomes
+        mockIncomes.push({
+          id: "inc-" + Math.floor(Math.random() * 100000),
+          userId: "u-1",
+          transactionId: txId,
+          source: mockTransactionCategories.find(c => c.id === data.categoryId)?.name || "Other",
+          notes: data.description || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      } else if (data.type === "EXPENSE") {
+        acc.balance -= data.amount;
+        // Seed mockExpenses
+        mockExpenses.push({
+          id: "exp-" + Math.floor(Math.random() * 100000),
+          userId: "u-1",
+          transactionId: txId,
+          merchant: null,
+          paymentMethod: acc.name,
+          location: null,
+          notes: data.description || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      } else if (data.type === "TRANSFER" && data.toAccountId) {
+        acc.balance -= data.amount;
+        const targetAcc = mockAccounts.find(a => a.id === data.toAccountId);
+        if (targetAcc) {
+          targetAcc.balance += data.amount;
+        }
+      }
+    }
+
+    mockTransactions.unshift(newTx);
+    return { success: true, message: "Transaction logged successfully", data: newTx };
+  },
+
+  async deleteTransaction(id: string): Promise<ApiResponse> {
+    const tx = mockTransactions.find(t => t.id === id);
+    if (tx) {
+      // Revert account balances
+      const acc = mockAccounts.find(a => a.id === tx.accountId);
+      if (acc) {
+        if (tx.type === "INCOME") {
+          acc.balance -= tx.amount;
+        } else if (tx.type === "EXPENSE") {
+          acc.balance += tx.amount;
+        } else if (tx.type === "TRANSFER" && tx.toAccountId) {
+          acc.balance += tx.amount;
+          const targetAcc = mockAccounts.find(a => a.id === tx.toAccountId);
+          if (targetAcc) {
+            targetAcc.balance -= tx.amount;
+          }
+        }
+      }
+      mockTransactions = mockTransactions.filter(t => t.id !== id);
+    }
+    return { success: true, message: "Transaction deleted successfully" };
+  }
+};
+
+export const BudgetService = {
+  async getBudgets(): Promise<ApiResponse<Budget[]>> {
+    const enriched = mockBudgets.map(b => ({
+      ...b,
+      budgetCategories: mockBudgetCategories.filter(bc => bc.budgetId === b.id).map(bc => ({
+        ...bc,
+        category: mockTransactionCategories.find(c => c.id === bc.categoryId)!,
+      })),
+    }));
+    return { success: true, message: "Budgets loaded", data: enriched };
+  },
+
+  async addBudget(data: { name: string; amount: number; startDate: string; endDate: string; categories?: { categoryId: string; limitAmount: number }[] }): Promise<ApiResponse<Budget>> {
+    const budgetId = "b-" + Math.floor(Math.random() * 100000);
+    const newB: Budget = {
+      id: budgetId,
+      userId: "u-1",
+      name: data.name,
+      amount: data.amount,
+      startDate: new Date(data.startDate).toISOString(),
+      endDate: new Date(data.endDate).toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    mockBudgets.push(newB);
+
+    if (data.categories) {
+      data.categories.forEach(c => {
+        mockBudgetCategories.push({
+          id: "bc-" + Math.floor(Math.random() * 100000),
+          budgetId,
+          categoryId: c.categoryId,
+          limitAmount: c.limitAmount,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      });
+    }
+
+    return { success: true, message: "Budget limit set", data: newB };
+  }
+};
+
+export const SavingsService = {
+  async getGoals(): Promise<ApiResponse<SavingsGoal[]>> {
+    return { success: true, message: "Savings goals loaded", data: mockSavingsGoals };
+  },
+
+  async addGoal(data: { name: string; targetAmount: number; currentAmount?: number; deadline?: string | null }): Promise<ApiResponse<SavingsGoal>> {
+    const newGoal: SavingsGoal = {
+      id: "sg-" + Math.floor(Math.random() * 100000),
+      userId: "u-1",
+      name: data.name,
+      targetAmount: data.targetAmount,
+      currentAmount: data.currentAmount || 0,
+      deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
+      status: "ACTIVE",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    mockSavingsGoals.push(newGoal);
+    return { success: true, message: "Savings goal created", data: newGoal };
+  },
+
+  async addContribution(id: string, amount: number): Promise<ApiResponse<SavingsGoal>> {
+    const goal = mockSavingsGoals.find(g => g.id === id);
+    if (goal) {
+      goal.currentAmount += amount;
+      if (goal.currentAmount >= goal.targetAmount) {
+        goal.status = "COMPLETED";
+      }
+      goal.updatedAt = new Date().toISOString();
+    }
+    return { success: true, message: "Contribution logged", data: goal };
+  }
+};
+
+export const BillService = {
+  async getBills(): Promise<ApiResponse<Bill[]>> {
+    return { success: true, message: "Bills loaded", data: mockBills };
+  },
+
+  async addBill(data: { name: string; amount: number; dueDate: string; isRecurring?: boolean; recurringInterval?: string | null }): Promise<ApiResponse<Bill>> {
+    const newBill: Bill = {
+      id: "bill-" + Math.floor(Math.random() * 100000),
+      userId: "u-1",
+      name: data.name,
+      amount: data.amount,
+      dueDate: new Date(data.dueDate).toISOString(),
+      isRecurring: data.isRecurring || false,
+      recurringInterval: data.recurringInterval || null,
+      status: "UNPAID",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    mockBills.push(newBill);
+    return { success: true, message: "Bill scheduled", data: newBill };
+  },
+
+  async payBill(id: string): Promise<ApiResponse<Bill>> {
+    const bill = mockBills.find(b => b.id === id);
+    if (bill) {
+      bill.status = "PAID";
+      bill.updatedAt = new Date().toISOString();
+      
+      // Auto-log paid bill as expense
+      await TransactionService.addTransaction({
+        accountId: mockAccounts[0].id,
+        amount: bill.amount,
+        type: "EXPENSE",
+        categoryId: "cat-f-5",
+        description: `Payment for ${bill.name}`,
+      });
+    }
+    return { success: true, message: "Bill marked as paid", data: bill };
+  }
+};
+
+export const SubscriptionService = {
+  async getSubscriptions(): Promise<ApiResponse<Subscription[]>> {
+    const enriched = mockSubscriptions.map(s => ({
+      ...s,
+      category: mockTransactionCategories.find(c => c.id === s.categoryId) || null,
+    }));
+    return { success: true, message: "Subscriptions loaded", data: enriched };
+  },
+
+  async addSubscription(data: { name: string; amount: number; billingCycle: string; renewalDate: string; categoryId?: string | null }): Promise<ApiResponse<Subscription>> {
+    const newSub: Subscription = {
+      id: "sub-" + Math.floor(Math.random() * 100000),
+      userId: "u-1",
+      name: data.name,
+      amount: data.amount,
+      billingCycle: data.billingCycle,
+      renewalDate: new Date(data.renewalDate).toISOString(),
+      categoryId: data.categoryId || null,
+      status: "ACTIVE",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    mockSubscriptions.push(newSub);
+    return { success: true, message: "Subscription configured", data: newSub };
+  }
+};
+
+export const FinanceService = {
+  async getFinanceDashboard(): Promise<ApiResponse<FinanceDashboardData>> {
+    const currentBalance = mockAccounts.reduce((sum, a) => sum + a.balance, 0);
+
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const monthlyIncome = mockTransactions
+      .filter(tx => tx.type === "INCOME" && new Date(tx.date) >= startOfMonth)
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    const monthlyExpenses = mockTransactions
+      .filter(tx => tx.type === "EXPENSE" && new Date(tx.date) >= startOfMonth)
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const budgetLimit = mockBudgets[0]?.amount || 0;
+    const remainingBudget = Math.max(0, budgetLimit - monthlyExpenses);
+
+    const totalGoalTarget = mockSavingsGoals.reduce((sum, g) => sum + g.targetAmount, 0);
+    const totalGoalCurrent = mockSavingsGoals.reduce((sum, g) => sum + g.currentAmount, 0);
+    const savingsProgress = totalGoalTarget > 0 ? (totalGoalCurrent / totalGoalTarget) * 100 : 0;
+
+    const upcomingBills = mockBills.filter(b => b.status === "UNPAID");
+    const upcomingSubscriptions = mockSubscriptions.filter(s => s.status === "ACTIVE");
+
+    const recentTransactions = mockTransactions.slice(0, 5).map(tx => ({
+      ...tx,
+      category: mockTransactionCategories.find(c => c.id === tx.categoryId) || null,
+      account: mockAccounts.find(a => a.id === tx.accountId)!,
+    }));
+
+    const categoriesSum = {} as Record<string, number>;
+    const expenseTxs = mockTransactions.filter(tx => tx.type === "EXPENSE");
+    expenseTxs.forEach(tx => {
+      const catId = tx.categoryId || "Other";
+      categoriesSum[catId] = (categoriesSum[catId] || 0) + tx.amount;
+    });
+
+    const totalExpense = expenseTxs.reduce((sum, tx) => sum + tx.amount, 0) || 1;
+    const topCategories = Object.keys(categoriesSum).map(catId => {
+      const cat = mockTransactionCategories.find(c => c.id === catId);
+      const amount = categoriesSum[catId];
+      return {
+        name: cat?.name || "Other",
+        amount,
+        percentage: (amount / totalExpense) * 100,
+        color: cat?.color || "#9CA3AF",
+      };
+    }).sort((a, b) => b.amount - a.amount);
+
+    return {
+      success: true,
+      message: "Finance dashboard loaded",
+      data: {
+        currentBalance,
+        monthlyIncome,
+        monthlyExpenses,
+        remainingBudget,
+        savingsProgress,
+        upcomingBills,
+        upcomingSubscriptions,
+        recentTransactions,
+        topCategories,
+      }
+    };
+  },
+
+  async generateFinanceReport(): Promise<ApiResponse<FinanceReportData>> {
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    
+    const monthlyIncome = mockTransactions
+      .filter(tx => tx.type === "INCOME" && new Date(tx.date) >= startOfMonth)
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    const monthlyExpense = mockTransactions
+      .filter(tx => tx.type === "EXPENSE" && new Date(tx.date) >= startOfMonth)
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    const monthlySavings = Math.max(0, monthlyIncome - monthlyExpense);
+
+    const yearlyReport = {
+      income: monthlyIncome * 12,
+      expense: monthlyExpense * 12,
+      savings: monthlySavings * 12,
+    };
+
+    const categoriesSum = {} as Record<string, number>;
+    const expenseTxs = mockTransactions.filter(tx => tx.type === "EXPENSE");
+    expenseTxs.forEach(tx => {
+      const catId = tx.categoryId || "Other";
+      categoriesSum[catId] = (categoriesSum[catId] || 0) + tx.amount;
+    });
+    const totalExpense = expenseTxs.reduce((sum, tx) => sum + tx.amount, 0) || 1;
+    const categoryBreakdown = Object.keys(categoriesSum).map(catId => {
+      const cat = mockTransactionCategories.find(c => c.id === catId);
+      return {
+        categoryId: catId,
+        categoryName: cat?.name || "Other",
+        amount: categoriesSum[catId],
+        percentage: (categoriesSum[catId] / totalExpense) * 100,
+        color: cat?.color || "#9CA3AF",
+      };
+    });
+
+    const incomeVsExpense = [
+      { month: "May", income: 3800, expense: 2100 },
+      { month: "Jun", income: 4200, expense: 1900 },
+      { month: "Jul", income: monthlyIncome, expense: monthlyExpense },
+    ];
+
+    const savingsReport = mockSavingsGoals.map(g => ({
+      goalId: g.id,
+      goalName: g.name,
+      current: g.currentAmount,
+      target: g.targetAmount,
+      progress: (g.currentAmount / g.targetAmount) * 100,
+    }));
+
+    const budgetReport = mockBudgets.map(b => {
+      const spent = mockTransactions
+        .filter(t => t.type === "EXPENSE" && new Date(t.date) >= new Date(b.startDate) && new Date(t.date) <= new Date(b.endDate))
+        .reduce((sum, t) => sum + t.amount, 0);
+      return {
+        budgetId: b.id,
+        budgetName: b.name,
+        limit: b.amount,
+        spent,
+        remaining: Math.max(0, b.amount - spent),
+      };
+    });
+
+    return {
+      success: true,
+      message: "Report compiled",
+      data: {
+        monthlyReport: { income: monthlyIncome, expense: monthlyExpense, savings: monthlySavings },
+        yearlyReport,
+        categoryBreakdown,
+        incomeVsExpense,
+        savingsReport,
+        budgetReport,
+      }
     };
   }
 };

@@ -71,6 +71,18 @@ model User {
   moodLogs        MoodLog[]
   healthGoals     HealthGoal[]
   healthReminders HealthReminder[]
+  accounts              Account[]
+  transactions          Transaction[]
+  incomes               Income[]
+  expenses              Expense[]
+  budgets               Budget[]
+  savingsGoals          SavingsGoal[]
+  bills                 Bill[]
+  subscriptions         Subscription[]
+  transactionCategories TransactionCategory[]
+  transactionTags       TransactionTag[]
+  recurringTransactions RecurringTransaction[]
+  financialReports      FinancialReport[]
 
   @@map("users")
 }
@@ -618,4 +630,280 @@ model HealthReminder {
 
   @@index([userId])
   @@map("health_reminders")
+}
+
+enum AccountType {
+  CASH
+  BANK
+  WALLET
+  CREDIT_CARD
+  UPI
+  INVESTMENT
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum RecurringFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum BillStatus {
+  PAID
+  UNPAID
+  OVERDUE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+}
+
+enum ReportType {
+  MONTHLY
+  YEARLY
+}
+
+model Account {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @db.Uuid
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                  String
+  type                  AccountType            @default(BANK)
+  balance               Float                  @default(0)
+  currency              String                 @default("USD")
+  isDefault             Boolean                @default(false)
+  isArchived            Boolean                @default(false)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  transactions          Transaction[]          @relation("AccountTransactions")
+  transferTransactions  Transaction[]          @relation("TransferAccountTransactions")
+  recurringTransactions RecurringTransaction[]
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model TransactionCategory {
+  id            String         @id @default(uuid()) @db.Uuid
+  userId        String?        @db.Uuid
+  user          User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  type          TransactionType @default(EXPENSE)
+  color         String?
+  icon          String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  transactions  Transaction[]
+  budgetCategories BudgetCategory[]
+  subscriptions Subscription[]
+  recurringTransactions RecurringTransaction[]
+
+  @@index([userId])
+  @@map("transaction_categories")
+}
+
+model TransactionTag {
+  id           String        @id @default(uuid()) @db.Uuid
+  userId       String        @db.Uuid
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[] @relation("TransactionToTag")
+
+  @@index([userId])
+  @@map("transaction_tags")
+}
+
+model Transaction {
+  id                     String                @id @default(uuid()) @db.Uuid
+  userId                 String                @db.Uuid
+  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId              String                @db.Uuid
+  account                Account               @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  toAccountId            String?               @db.Uuid
+  toAccount              Account?              @relation("TransferAccountTransactions", fields: [toAccountId], references: [id], onDelete: SetNull)
+  categoryId             String?               @db.Uuid
+  category               TransactionCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  amount                 Float
+  type                   TransactionType
+  description            String?
+  date                   DateTime              @default(now())
+  isRecurring            Boolean               @default(false)
+  recurringTransactionId String?               @db.Uuid
+  recurringTransaction   RecurringTransaction? @relation(fields: [recurringTransactionId], references: [id], onDelete: SetNull)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  incomeDetails          Income?
+  expenseDetails         Expense?
+  tags                   TransactionTag[]      @relation("TransactionToTag")
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([date])
+  @@map("transactions")
+}
+
+model Income {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String      @db.Uuid
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId String      @unique @db.Uuid
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  source        String?
+  notes         String?     @db.Text
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId])
+  @@map("incomes")
+}
+
+model Expense {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String      @db.Uuid
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId String      @unique @db.Uuid
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  merchant      String?
+  paymentMethod String?
+  location      String?
+  notes         String?     @db.Text
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId])
+  @@map("expenses")
+}
+
+model Budget {
+  id               String           @id @default(uuid()) @db.Uuid
+  userId           String           @db.Uuid
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  amount           Float
+  startDate        DateTime
+  endDate          DateTime
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  budgetCategories BudgetCategory[]
+
+  @@index([userId])
+  @@map("budgets")
+}
+
+model BudgetCategory {
+  id          String              @id @default(uuid()) @db.Uuid
+  budgetId    String              @db.Uuid
+  budget      Budget              @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  categoryId  String              @db.Uuid
+  category    TransactionCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  limitAmount Float
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([budgetId])
+  @@index([categoryId])
+  @@map("budget_categories")
+}
+
+model SavingsGoal {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  deadline      DateTime?
+  status        String    @default("ACTIVE")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("savings_goals")
+}
+
+model Bill {
+  id                String     @id @default(uuid()) @db.Uuid
+  userId            String     @db.Uuid
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  amount            Float
+  dueDate           DateTime
+  isRecurring       Boolean    @default(false)
+  recurringInterval String?
+  status            BillStatus @default(UNPAID)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([dueDate])
+  @@map("bills")
+}
+
+model Subscription {
+  id          String             @id @default(uuid()) @db.Uuid
+  userId      String             @db.Uuid
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  amount      Float
+  billingCycle String             @default("MONTHLY")
+  renewalDate DateTime
+  categoryId  String?            @db.Uuid
+  category    TransactionCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  status      SubscriptionStatus @default(ACTIVE)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([userId])
+  @@map("subscriptions")
+}
+
+model RecurringTransaction {
+  id             String             @id @default(uuid()) @db.Uuid
+  userId         String             @db.Uuid
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  amount         Float
+  type           TransactionType
+  frequency      RecurringFrequency @default(MONTHLY)
+  startDate      DateTime
+  endDate        DateTime?
+  nextOccurrence DateTime?
+  accountId      String             @db.Uuid
+  account        Account            @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  categoryId     String?            @db.Uuid
+  category       TransactionCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  transactions   Transaction[]
+
+  @@index([userId])
+  @@map("recurring_transactions")
+}
+
+model FinancialReport {
+  id           String     @id @default(uuid()) @db.Uuid
+  userId       String     @db.Uuid
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         ReportType @default(MONTHLY)
+  startDate    DateTime
+  endDate      DateTime
+  totalIncome  Float
+  totalExpense Float
+  netSavings   Float
+  details      String?    @db.Text
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([userId])
+  @@map("financial_reports")
 }

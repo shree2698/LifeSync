@@ -568,3 +568,199 @@ export interface HealthReportData {
     history: SkinLog[];
   };
 }
+
+// ==========================================
+// PERSONAL FINANCE TYPES
+// ==========================================
+
+export type AccountType = "CASH" | "BANK" | "WALLET" | "CREDIT_CARD" | "UPI" | "INVESTMENT";
+export type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER";
+export type RecurringFrequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
+export type BillStatus = "PAID" | "UNPAID" | "OVERDUE";
+export type SubscriptionStatus = "ACTIVE" | "CANCELLED";
+export type ReportType = "MONTHLY" | "YEARLY";
+
+export interface Account {
+  id: string;
+  userId: string;
+  name: string;
+  type: AccountType;
+  balance: number;
+  currency: string;
+  isDefault: boolean;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TransactionCategory {
+  id: string;
+  userId: string | null;
+  name: string;
+  type: TransactionType;
+  color: string | null;
+  icon: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TransactionTag {
+  id: string;
+  userId: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  accountId: string;
+  toAccountId: string | null;
+  categoryId: string | null;
+  amount: number;
+  type: TransactionType;
+  description: string | null;
+  date: string;
+  isRecurring: boolean;
+  recurringTransactionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  category?: TransactionCategory | null;
+  tags?: TransactionTag[];
+}
+
+export interface Income {
+  id: string;
+  userId: string;
+  transactionId: string;
+  source: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Expense {
+  id: string;
+  userId: string;
+  transactionId: string;
+  merchant: string | null;
+  paymentMethod: string | null;
+  location: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Budget {
+  id: string;
+  userId: string;
+  name: string;
+  amount: number;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
+  budgetCategories?: BudgetCategory[];
+}
+
+export interface BudgetCategory {
+  id: string;
+  budgetId: string;
+  categoryId: string;
+  limitAmount: number;
+  createdAt: string;
+  updatedAt: string;
+  category?: TransactionCategory;
+}
+
+export interface SavingsGoal {
+  id: string;
+  userId: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Bill {
+  id: string;
+  userId: string;
+  name: string;
+  amount: number;
+  dueDate: string;
+  isRecurring: boolean;
+  recurringInterval: string | null;
+  status: BillStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  name: string;
+  amount: number;
+  billingCycle: string;
+  renewalDate: string;
+  categoryId: string | null;
+  status: SubscriptionStatus;
+  createdAt: string;
+  updatedAt: string;
+  category?: TransactionCategory | null;
+}
+
+export interface RecurringTransaction {
+  id: string;
+  userId: string;
+  title: string;
+  amount: number;
+  type: TransactionType;
+  frequency: RecurringFrequency;
+  startDate: string;
+  endDate: string | null;
+  nextOccurrence: string | null;
+  accountId: string;
+  categoryId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinancialReport {
+  id: string;
+  userId: string;
+  type: ReportType;
+  startDate: string;
+  endDate: string;
+  totalIncome: number;
+  totalExpense: number;
+  netSavings: number;
+  details: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinanceDashboardData {
+  currentBalance: number;
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  remainingBudget: number;
+  savingsProgress: number;
+  upcomingBills: Bill[];
+  upcomingSubscriptions: Subscription[];
+  recentTransactions: (Transaction & { category: TransactionCategory | null; account: Account })[];
+  topCategories: { name: string; amount: number; percentage: number; color: string }[];
+}
+
+export interface FinanceReportData {
+  monthlyReport: { income: number; expense: number; savings: number };
+  yearlyReport: { income: number; expense: number; savings: number };
+  categoryBreakdown: { categoryId: string; categoryName: string; amount: number; percentage: number; color: string }[];
+  incomeVsExpense: { month: string; income: number; expense: number }[];
+  savingsReport: { goalId: string; goalName: string; current: number; target: number; progress: number }[];
+  budgetReport: { budgetId: string; budgetName: string; limit: number; spent: number; remaining: number }[];
+}
+

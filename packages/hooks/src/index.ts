@@ -37,7 +37,28 @@ import {
   HealthGoal,
   HealthReminder,
   HealthDashboardData,
-  HealthReportData
+  HealthReportData,
+  Account,
+  Transaction,
+  Income,
+  Expense,
+  Budget,
+  BudgetCategory,
+  SavingsGoal,
+  Bill,
+  Subscription,
+  TransactionCategory,
+  TransactionTag,
+  RecurringTransaction,
+  FinancialReport,
+  FinanceDashboardData,
+  FinanceReportData,
+  AccountType,
+  TransactionType,
+  RecurringFrequency,
+  BillStatus,
+  SubscriptionStatus,
+  ReportType
 } from "@lifesync/types";
 import {
   AuthService,
@@ -60,7 +81,14 @@ import {
   HairCareService,
   SkinCareService,
   MoodService,
-  HealthService
+  HealthService,
+  AccountService,
+  TransactionService,
+  BudgetService,
+  SavingsService,
+  BillService,
+  SubscriptionService,
+  FinanceService
 } from "@lifesync/services";
 
 // ==========================================
@@ -1299,4 +1327,387 @@ export function useSleepAnalysis() {
     },
   };
 }
+
+// ==========================================
+// PERSONAL FINANCE STORE & OFFLINE QUEUE
+// ==========================================
+
+export interface OfflineFinanceLog {
+  id: string;
+  type: "account" | "transaction" | "budget" | "goal" | "contribution" | "bill" | "subscription";
+  payload: any;
+  timestamp: string;
+}
+
+interface FinanceState {
+  dashboardData: FinanceDashboardData | null;
+  reportData: FinanceReportData | null;
+  accounts: Account[];
+  categories: TransactionCategory[];
+  tags: TransactionTag[];
+  offlineQueue: OfflineFinanceLog[];
+  isLoading: boolean;
+  error: string | null;
+
+  fetchDashboard: () => Promise<void>;
+  fetchReport: () => Promise<void>;
+  fetchAccounts: () => Promise<void>;
+  fetchCategories: () => Promise<void>;
+  fetchTags: () => Promise<void>;
+
+  addAccount: (name: string, type: AccountType, balance: number, currency?: string) => Promise<void>;
+  deleteAccount: (id: string) => Promise<void>;
+  
+  addTransaction: (txData: { accountId: string; amount: number; type: TransactionType; categoryId?: string | null; description?: string | null; toAccountId?: string | null; date?: string }) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
+
+  addBudget: (budgetData: { name: string; amount: number; startDate: string; endDate: string; categories?: { categoryId: string; limitAmount: number }[] }) => Promise<void>;
+  
+  addSavingsGoal: (goalData: { name: string; targetAmount: number; currentAmount?: number; deadline?: string | null }) => Promise<void>;
+  addContribution: (goalId: string, amount: number) => Promise<void>;
+
+  addBill: (billData: { name: string; amount: number; dueDate: string; isRecurring?: boolean; recurringInterval?: string | null }) => Promise<void>;
+  payBill: (id: string) => Promise<void>;
+
+  addSubscription: (subData: { name: string; amount: number; billingCycle: string; renewalDate: string; categoryId?: string | null }) => Promise<void>;
+
+  addOfflineLog: (type: OfflineFinanceLog["type"], payload: any) => void;
+  syncOfflineQueue: () => Promise<void>;
+  clearOfflineQueue: () => void;
+}
+
+export const useFinanceStore = create<FinanceState>((set, get) => ({
+  dashboardData: null,
+  reportData: null,
+  accounts: [],
+  categories: [],
+  tags: [],
+  offlineQueue: [],
+  isLoading: false,
+  error: null,
+
+  fetchDashboard: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await FinanceService.getFinanceDashboard();
+      if (res.success && res.data) {
+        set({ dashboardData: res.data, isLoading: false });
+      } else {
+        set({ error: res.message, isLoading: false });
+      }
+    } catch (err: any) {
+      set({ error: err.message || "Failed to load finance dashboard", isLoading: false });
+    }
+  },
+
+  fetchReport: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await FinanceService.generateFinanceReport();
+      if (res.success && res.data) {
+        set({ reportData: res.data, isLoading: false });
+      } else {
+        set({ error: res.message, isLoading: false });
+      }
+    } catch (err: any) {
+      set({ error: err.message || "Failed to load finance report", isLoading: false });
+    }
+  },
+
+  fetchAccounts: async () => {
+    try {
+      const res = await AccountService.getAccounts();
+      if (res.success && res.data) {
+        set({ accounts: res.data });
+      }
+    } catch (err) {}
+  },
+
+  fetchCategories: async () => {
+    try {
+      const res = await TransactionService.getCategories();
+      if (res.success && res.data) {
+        set({ categories: res.data });
+      }
+    } catch (err) {}
+  },
+
+  fetchTags: async () => {
+    try {
+      const res = await TransactionService.getTags();
+      if (res.success && res.data) {
+        set({ tags: res.data });
+      }
+    } catch (err) {}
+  },
+
+  addAccount: async (name, type, balance, currency) => {
+    // Optimistic Update
+    const currentAccs = get().accounts;
+    const tempAcc: Account = {
+      id: "temp-" + Math.random(),
+      userId: "u-1",
+      name,
+      type,
+      balance,
+      currency: currency || "USD",
+      isDefault: currentAccs.length === 0,
+      isArchived: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    set({ accounts: [...currentAccs, tempAcc] });
+
+    try {
+      const res = await AccountService.addAccount({ name, type, balance, currency });
+      if (res.success) {
+        get().fetchAccounts();
+        get().fetchDashboard();
+      }
+    } catch (err) {
+      get().fetchAccounts();
+    }
+  },
+
+  deleteAccount: async (id) => {
+    // Optimistic Update
+    set({ accounts: get().accounts.filter(a => a.id !== id) });
+    try {
+      const res = await AccountService.deleteAccount(id);
+      if (res.success) {
+        get().fetchAccounts();
+        get().fetchDashboard();
+      }
+    } catch (err) {
+      get().fetchAccounts();
+    }
+  },
+
+  addTransaction: async (txData) => {
+    // Optimistic Update Dashboard Values
+    const currentDash = get().dashboardData;
+    if (currentDash) {
+      const balanceDelta = txData.type === "INCOME" ? txData.amount : -txData.amount;
+      const incomeDelta = txData.type === "INCOME" ? txData.amount : 0;
+      const expenseDelta = txData.type === "EXPENSE" ? txData.amount : 0;
+
+      set({
+        dashboardData: {
+          ...currentDash,
+          currentBalance: currentDash.currentBalance + balanceDelta,
+          monthlyIncome: currentDash.monthlyIncome + incomeDelta,
+          monthlyExpenses: currentDash.monthlyExpenses + expenseDelta,
+          remainingBudget: Math.max(0, currentDash.remainingBudget - expenseDelta),
+        }
+      });
+    }
+
+    try {
+      const res = await TransactionService.addTransaction(txData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+        get().fetchAccounts();
+      }
+    } catch (err) {
+      get().fetchDashboard();
+    }
+  },
+
+  deleteTransaction: async (id) => {
+    try {
+      const res = await TransactionService.deleteTransaction(id);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+        get().fetchAccounts();
+      }
+    } catch (err) {}
+  },
+
+  addBudget: async (budgetData) => {
+    try {
+      const res = await BudgetService.addBudget(budgetData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  addSavingsGoal: async (goalData) => {
+    try {
+      const res = await SavingsService.addGoal(goalData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  addContribution: async (goalId, amount) => {
+    // Optimistic Update goal progress
+    const currentDash = get().dashboardData;
+    if (currentDash) {
+      // Delta to balance
+      set({
+        dashboardData: {
+          ...currentDash,
+          currentBalance: currentDash.currentBalance - amount,
+        }
+      });
+    }
+
+    try {
+      const res = await SavingsService.addContribution(goalId, amount);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {
+      get().fetchDashboard();
+    }
+  },
+
+  addBill: async (billData) => {
+    try {
+      const res = await BillService.addBill(billData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  payBill: async (id) => {
+    try {
+      const res = await BillService.payBill(id);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+        get().fetchAccounts();
+      }
+    } catch (err) {}
+  },
+
+  addSubscription: async (subData) => {
+    try {
+      const res = await SubscriptionService.addSubscription(subData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  addOfflineLog: (type, payload) => {
+    const newLog: OfflineFinanceLog = {
+      id: "offline-f-" + Math.floor(Math.random() * 100000),
+      type,
+      payload,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Optimistically update values in Zustand
+    const currentDash = get().dashboardData;
+    if (currentDash && type === "transaction") {
+      const balanceDelta = payload.type === "INCOME" ? payload.amount : -payload.amount;
+      const incomeDelta = payload.type === "INCOME" ? payload.amount : 0;
+      const expenseDelta = payload.type === "EXPENSE" ? payload.amount : 0;
+
+      set({
+        dashboardData: {
+          ...currentDash,
+          currentBalance: currentDash.currentBalance + balanceDelta,
+          monthlyIncome: currentDash.monthlyIncome + incomeDelta,
+          monthlyExpenses: currentDash.monthlyExpenses + expenseDelta,
+          remainingBudget: Math.max(0, currentDash.remainingBudget - expenseDelta),
+        }
+      });
+    }
+
+    set({ offlineQueue: [...get().offlineQueue, newLog] });
+  },
+
+  syncOfflineQueue: async () => {
+    const queue = get().offlineQueue;
+    if (queue.length === 0) return;
+
+    set({ isLoading: true });
+
+    for (const item of queue) {
+      try {
+        if (item.type === "account") {
+          await AccountService.addAccount(item.payload);
+        } else if (item.type === "transaction") {
+          await TransactionService.addTransaction(item.payload);
+        } else if (item.type === "budget") {
+          await BudgetService.addBudget(item.payload);
+        } else if (item.type === "goal") {
+          await SavingsService.addGoal(item.payload);
+        } else if (item.type === "contribution") {
+          await SavingsService.addContribution(item.payload.goalId, item.payload.amount);
+        } else if (item.type === "bill") {
+          await BillService.addBill(item.payload);
+        } else if (item.type === "subscription") {
+          await SubscriptionService.addSubscription(item.payload);
+        }
+      } catch (err) {
+        console.error("Failed to sync offline finance entry:", item, err);
+      }
+    }
+
+    set({ offlineQueue: [], isLoading: false });
+    await get().fetchDashboard();
+    await get().fetchReport();
+    await get().fetchAccounts();
+  },
+
+  clearOfflineQueue: () => {
+    set({ offlineQueue: [] });
+  }
+}));
+
+// ==========================================
+// AI PLACEHOLDERS HOOKS
+// ==========================================
+
+export function useBudgetAdvisor() {
+  return {
+    getAdvice: async () => {
+      return "Based on your current July spending rate, you will exceed your grocery budget limit of $400 by 12%. Consider shifting $50 from leisure tags.";
+    },
+    isLoading: false,
+  };
+}
+
+export function useSpendingInsights() {
+  return {
+    getTopMerchant: () => "Whole Foods Market ($120.00)",
+    getMonthlyEfficiency: () => "You saved 64% of your total freelance/salary cash flow this month. Keep it up!",
+  };
+}
+
+export function useSavingsPlanner() {
+  return {
+    planContribution: (target: number, current: number, daysLeft: number) => {
+      const remaining = Math.max(0, target - current);
+      const daily = remaining / (daysLeft || 1);
+      return `To hit your goal on time, save at least $${(daily * 7).toFixed(2)} weekly.`;
+    },
+  };
+}
+
+export function useExpensePrediction() {
+  return {
+    predictNextMonthExpenses: async () => {
+      return [
+        { category: "Utilities", predictedAmount: 85.0 },
+        { category: "Food", predictedAmount: 140.0 },
+        { category: "Subscription renewals", predictedAmount: 36.98 },
+      ];
+    },
+  };
+}
+
 
