@@ -8,7 +8,19 @@
       ],
       "@/assets/*": [
         "./assets/*"
-      ]
+      ],
+      "@lifesync/types": ["../../packages/types/src/index"],
+      "@lifesync/types/*": ["../../packages/types/src/*"],
+      "@lifesync/config": ["../../packages/config/src/index"],
+      "@lifesync/config/*": ["../../packages/config/src/*"],
+      "@lifesync/hooks": ["../../packages/hooks/src/index"],
+      "@lifesync/hooks/*": ["../../packages/hooks/src/*"],
+      "@lifesync/utils": ["../../packages/utils/src/index"],
+      "@lifesync/utils/*": ["../../packages/utils/src/*"],
+      "@lifesync/services": ["../../packages/services/src/index"],
+      "@lifesync/services/*": ["../../packages/services/src/*"],
+      "@lifesync/ai": ["../../packages/ai/src/index"],
+      "@lifesync/ai/*": ["../../packages/ai/src/*"]
     }
   },
   "include": [

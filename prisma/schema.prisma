@@ -1,0 +1,298 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  AMOLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum GoalStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum HabitFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+model User {
+  id             String          @id @default(uuid()) @db.Uuid
+  email          String          @unique
+  authProvider   String          @default("CLERK")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  profile        Profile?
+  settings       Settings?
+  notifications  Notification[]
+  tasks          Task[]
+  labels         Label[]
+  habits         Habit[]
+  goals          Goal[]
+  folders        Folder[]
+  tags           Tag[]
+  notes          Note[]
+  calendarEvents CalendarEvent[]
+
+  @@map("users")
+}
+
+model Profile {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @unique @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName    String?
+  avatar      String?
+  dateOfBirth DateTime?
+  gender      String?
+  timezone    String    @default("UTC")
+  country     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("profiles")
+}
+
+model Settings {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @unique @db.Uuid
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme             Theme    @default(DARK)
+  marketingEmails   Boolean  @default(false)
+  securityAlerts    Boolean  @default(true)
+  pushNotifications Boolean  @default(true)
+  currency          String   @default("USD")
+  language          String   @default("en")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("settings")
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  type      String   @default("SYSTEM")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notifications")
+}
+
+// ==========================================
+// PRODUCTIVITY MODULE MODELS
+// ==========================================
+
+model Task {
+  id                String     @id @default(uuid()) @db.Uuid
+  userId            String     @db.Uuid
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title             String
+  description       String?    @db.Text
+  status            TaskStatus @default(TODO)
+  priority          Priority   @default(MEDIUM)
+  dueDate           DateTime?
+  startDate         DateTime?
+  time              String?    // e.g. "14:30"
+  estimatedDuration Int?       // in minutes
+  color             String?    // hex color
+  icon              String?    // lucide icon name
+  pinned            Boolean    @default(false)
+  favorite          Boolean    @default(false)
+  recurringExpr     String?    // e.g., "every 1 day" or CRON pattern
+  goalId            String?    @db.Uuid
+  goal              Goal?      @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  subtasks          Subtask[]
+  labels            Label[]    @relation("TaskLabels")
+  
+  // Self-referential relation for task dependencies
+  dependsOnId       String?    @db.Uuid
+  dependsOn         Task?      @relation("TaskDependencies", fields: [dependsOnId], references: [id], onDelete: SetNull)
+  dependencies      Task[]     @relation("TaskDependencies")
+
+  @@index([userId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+model Subtask {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String   @db.Uuid
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title     String
+  completed Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+  @@map("subtasks")
+}
+
+model Label {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String   // Hex code
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tasks     Task[]   @relation("TaskLabels")
+
+  @@unique([userId, name])
+  @@map("labels")
+}
+
+model Habit {
+  id           String         @id @default(uuid()) @db.Uuid
+  userId       String         @db.Uuid
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  frequency    HabitFrequency @default(DAILY)
+  customFreq   String?        // JSON representation of custom frequency rules
+  reminderTime String?        // e.g. "08:00"
+  streak       Int            @default(0)
+  category     String         @default("Personal")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  logs         HabitLog[]
+
+  @@index([userId])
+  @@map("habits")
+}
+
+model HabitLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  habitId     String   @db.Uuid
+  habit       Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+
+  @@unique([habitId, completedAt])
+  @@map("habit_logs")
+}
+
+model Goal {
+  id          String     @id @default(uuid()) @db.Uuid
+  userId      String     @db.Uuid
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  category    String     @default("General")
+  progress    Int        @default(0) // progress percentage or raw count
+  target      Int        @default(100) // target value, e.g. 100 for percentage
+  deadline    DateTime?
+  status      GoalStatus @default(ACTIVE)
+  priority    Priority   @default(MEDIUM)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  milestones  Milestone[]
+  tasks       Task[]
+
+  @@index([userId])
+  @@map("goals")
+}
+
+model Milestone {
+  id        String   @id @default(uuid()) @db.Uuid
+  goalId    String   @db.Uuid
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  title     String
+  completed Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([goalId])
+  @@map("milestones")
+}
+
+model Folder {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  notes     Note[]
+
+  @@unique([userId, name])
+  @@map("folders")
+}
+
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  notes     Note[]   @relation("NoteTags")
+
+  @@unique([userId, name])
+  @@map("tags")
+}
+
+model Note {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  content   String?  @db.Text // Markdown text
+  pinned    Boolean  @default(false)
+  folderId  String?  @db.Uuid
+  folder    Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tags      Tag[]    @relation("NoteTags")
+
+  @@index([userId])
+  @@map("notes")
+}
+
+model CalendarEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?  @db.Text
+  start         DateTime
+  end           DateTime
+  allDay        Boolean  @default(false)
+  recurringRule String?  // e.g. "FREQ=WEEKLY;BYDAY=MO,WE,FR"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([start, end])
+  @@map("calendar_events")
+}
