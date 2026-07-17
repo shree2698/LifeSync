@@ -17,7 +17,27 @@ import {
   CalendarEvent,
   TaskFilters,
   TaskSortOption,
-  TaskViewMode
+  TaskViewMode,
+  HealthProfile,
+  WaterLog,
+  SleepLog,
+  Workout,
+  WorkoutExercise,
+  WeightLog,
+  Medication,
+  MedicationLog,
+  Cycle,
+  CycleSymptom,
+  PCOSLog,
+  HairRoutine,
+  HairLog,
+  SkinRoutine,
+  SkinLog,
+  MoodLog,
+  HealthGoal,
+  HealthReminder,
+  HealthDashboardData,
+  HealthReportData
 } from "@lifesync/types";
 import {
   AuthService,
@@ -28,7 +48,19 @@ import {
   HabitService,
   GoalService,
   NoteService,
-  CalendarService
+  CalendarService,
+  HealthProfileService,
+  WaterService,
+  SleepService,
+  WorkoutService,
+  WeightService,
+  MedicationService,
+  WomenHealthService,
+  PcosService,
+  HairCareService,
+  SkinCareService,
+  MoodService,
+  HealthService
 } from "@lifesync/services";
 
 // ==========================================
@@ -844,7 +876,6 @@ export function useTaskSuggestions() {
 export function useGoalSuggestions() {
   return {
     suggestMilestones: (goalTitle: string) => {
-      // Return predefined milestone recommendations based on title keywords
       const title = goalTitle.toLowerCase();
       if (title.includes("read") || title.includes("book")) {
         return ["Select a book list", "Read 10 pages daily", "Draft 1-page summaries"];
@@ -856,3 +887,416 @@ export function useGoalSuggestions() {
     },
   };
 }
+
+// ==========================================
+// HEALTH STORE & OFFLINE QUEUE
+// ==========================================
+
+export interface OfflineLog {
+  id: string;
+  type: "water" | "sleep" | "workout" | "weight" | "medication" | "medicationLog" | "cycle" | "pcos" | "hair" | "hairLog" | "skin" | "skinLog" | "mood";
+  payload: any;
+  timestamp: string;
+}
+
+interface HealthState {
+  dashboardData: HealthDashboardData | null;
+  reportData: HealthReportData | null;
+  offlineQueue: OfflineLog[];
+  isLoading: boolean;
+  error: string | null;
+
+  fetchDashboard: () => Promise<void>;
+  fetchReport: () => Promise<void>;
+  
+  logWater: (amount: number, date?: string) => Promise<void>;
+  logSleep: (logData: { startTime: string; endTime: string; quality: number; notes?: string | null; date?: string }) => Promise<void>;
+  logWorkout: (workoutData: { title: string; category: string; duration: number; calories?: number | null; notes?: string | null; date?: string; exercises?: any[] }) => Promise<void>;
+  logWeight: (weightData: { weight: number; chest?: number | null; waist?: number | null; hips?: number | null; date?: string }) => Promise<void>;
+  logMedication: (medData: { name: string; dosage: string; schedule: string; frequency: string; startDate: string; endDate?: string | null; remindersEnabled?: boolean; refillReminder?: boolean }) => Promise<void>;
+  takeMedication: (logData: { medicationId: string; status?: string; notes?: string | null; takenAt?: string }) => Promise<void>;
+  logCycle: (cycleData: { startDate: string; endDate?: string | null; notes?: string | null; symptoms?: any[] }) => Promise<void>;
+  logPcos: (logData: { symptoms: string[]; weight?: number | null; medicationTaken?: boolean; waterIntakeMl?: number | null; exerciseMinutes?: number | null; stressLevel?: number | null; notes?: string | null; date?: string }) => Promise<void>;
+  logHairRoutine: (routineData: { name: string; washDays: string[]; oilDays: string[]; maskDays: string[]; products: string[] }) => Promise<void>;
+  logHairActivity: (logData: { routineId?: string | null; washDone: boolean; oilDone: boolean; maskDone: boolean; hairFallCount?: number | null; notes?: string | null; date?: string }) => Promise<void>;
+  logSkinRoutine: (routineData: { name: string; products: string[]; concerns: string[] }) => Promise<void>;
+  logSkinActivity: (logData: { routineId?: string | null; completed: boolean; acneSeverity?: string | null; notes?: string | null; date?: string }) => Promise<void>;
+  logMood: (logData: { mood: string; energyLevel: number; stressLevel: number; notes?: string | null; date?: string }) => Promise<void>;
+
+  addOfflineLog: (type: OfflineLog["type"], payload: any) => void;
+  syncOfflineQueue: () => Promise<void>;
+  clearOfflineQueue: () => void;
+  updateProfile: (updates: Partial<HealthProfile>) => Promise<void>;
+}
+
+export const useHealthStore = create<HealthState>((set, get) => ({
+  dashboardData: null,
+  reportData: null,
+  offlineQueue: [],
+  isLoading: false,
+  error: null,
+
+  fetchDashboard: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await HealthService.getHealthDashboard();
+      if (res.success && res.data) {
+        set({ dashboardData: res.data, isLoading: false });
+      } else {
+        set({ error: res.message, isLoading: false });
+      }
+    } catch (err: any) {
+      set({ error: err.message || "Failed to load health dashboard", isLoading: false });
+    }
+  },
+
+  fetchReport: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await HealthService.generateHealthReport();
+      if (res.success && res.data) {
+        set({ reportData: res.data, isLoading: false });
+      } else {
+        set({ error: res.message, isLoading: false });
+      }
+    } catch (err: any) {
+      set({ error: err.message || "Failed to generate health report", isLoading: false });
+    }
+  },
+
+  logWater: async (amount: number, date?: string) => {
+    // Optimistic Update
+    const currentDash = get().dashboardData;
+    if (currentDash) {
+      set({
+        dashboardData: {
+          ...currentDash,
+          todayWater: currentDash.todayWater + amount,
+        }
+      });
+    }
+
+    try {
+      const res = await WaterService.addLog(amount, date);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {
+      // Rollback on error in a real app, here we just re-fetch
+      get().fetchDashboard();
+    }
+  },
+
+  logSleep: async (logData) => {
+    try {
+      const res = await SleepService.addLog(logData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  logWorkout: async (workoutData) => {
+    try {
+      const res = await WorkoutService.addWorkout(workoutData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  logWeight: async (weightData) => {
+    // Optimistic Update
+    const currentDash = get().dashboardData;
+    if (currentDash) {
+      set({
+        dashboardData: {
+          ...currentDash,
+          currentWeight: weightData.weight,
+        }
+      });
+    }
+
+    try {
+      const res = await WeightService.addLog(weightData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {
+      get().fetchDashboard();
+    }
+  },
+
+  logMedication: async (medData) => {
+    try {
+      const res = await MedicationService.addMedication(medData);
+      if (res.success) {
+        get().fetchDashboard();
+      }
+    } catch (err) {}
+  },
+
+  takeMedication: async (logData) => {
+    // Optimistic Update
+    const currentDash = get().dashboardData;
+    if (currentDash) {
+      const updatedList = currentDash.medicationStatus.list.map(m =>
+        m.id === logData.medicationId ? { ...m, takenToday: true } : m
+      );
+      set({
+        dashboardData: {
+          ...currentDash,
+          medicationStatus: {
+            ...currentDash.medicationStatus,
+            taken: currentDash.medicationStatus.taken + 1,
+            list: updatedList,
+          }
+        }
+      });
+    }
+
+    try {
+      const res = await MedicationService.logMedication(logData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {
+      get().fetchDashboard();
+    }
+  },
+
+  logCycle: async (cycleData) => {
+    try {
+      const res = await WomenHealthService.addCycle(cycleData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  logPcos: async (logData) => {
+    try {
+      const res = await PcosService.addLog(logData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  logHairRoutine: async (routineData) => {
+    try {
+      const res = await HairCareService.addRoutine(routineData);
+      if (res.success) {
+        get().fetchDashboard();
+      }
+    } catch (err) {}
+  },
+
+  logHairActivity: async (logData) => {
+    try {
+      const res = await HairCareService.logHairActivity(logData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  logSkinRoutine: async (routineData) => {
+    try {
+      const res = await SkinCareService.addRoutine(routineData);
+      if (res.success) {
+        get().fetchDashboard();
+      }
+    } catch (err) {}
+  },
+
+  logSkinActivity: async (logData) => {
+    try {
+      const res = await SkinCareService.logSkinActivity(logData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  logMood: async (logData) => {
+    // Optimistic Update
+    const currentDash = get().dashboardData;
+    if (currentDash) {
+      const tempMoodLog: MoodLog = {
+        id: "temp-mood",
+        userId: "u-1",
+        mood: logData.mood,
+        energyLevel: logData.energyLevel,
+        stressLevel: logData.stressLevel,
+        notes: logData.notes || null,
+        date: logData.date || new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      set({
+        dashboardData: {
+          ...currentDash,
+          todayMood: tempMoodLog,
+        }
+      });
+    }
+
+    try {
+      const res = await MoodService.addLog(logData);
+      if (res.success) {
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {
+      get().fetchDashboard();
+    }
+  },
+
+  addOfflineLog: (type, payload) => {
+    const newLog: OfflineLog = {
+      id: "offline-" + Math.floor(Math.random() * 100000),
+      type,
+      payload,
+      timestamp: new Date().toISOString(),
+    };
+    
+    // Apply optimistic updates directly to Zustand local state
+    const currentDash = get().dashboardData;
+    if (currentDash) {
+      if (type === "water") {
+        set({
+          dashboardData: {
+            ...currentDash,
+            todayWater: currentDash.todayWater + (payload.amount || payload),
+          }
+        });
+      } else if (type === "weight") {
+        set({
+          dashboardData: {
+            ...currentDash,
+            currentWeight: payload.weight || payload,
+          }
+        });
+      }
+    }
+
+    set({ offlineQueue: [...get().offlineQueue, newLog] });
+  },
+
+  syncOfflineQueue: async () => {
+    const queue = get().offlineQueue;
+    if (queue.length === 0) return;
+    
+    set({ isLoading: true });
+    
+    for (const item of queue) {
+      try {
+        if (item.type === "water") {
+          await WaterService.addLog(item.payload.amount || item.payload, item.payload.date);
+        } else if (item.type === "sleep") {
+          await SleepService.addLog(item.payload);
+        } else if (item.type === "workout") {
+          await WorkoutService.addWorkout(item.payload);
+        } else if (item.type === "weight") {
+          await WeightService.addLog(item.payload);
+        } else if (item.type === "medication") {
+          await MedicationService.addMedication(item.payload);
+        } else if (item.type === "medicationLog") {
+          await MedicationService.logMedication(item.payload);
+        } else if (item.type === "cycle") {
+          await WomenHealthService.addCycle(item.payload);
+        } else if (item.type === "pcos") {
+          await PcosService.addLog(item.payload);
+        } else if (item.type === "hairLog") {
+          await HairCareService.logHairActivity(item.payload);
+        } else if (item.type === "skinLog") {
+          await SkinCareService.logSkinActivity(item.payload);
+        } else if (item.type === "mood") {
+          await MoodService.addLog(item.payload);
+        }
+      } catch (err) {
+        console.error("Failed to sync offline log:", item, err);
+      }
+    }
+
+    set({ offlineQueue: [], isLoading: false });
+    await get().fetchDashboard();
+    await get().fetchReport();
+  },
+
+  clearOfflineQueue: () => {
+    set({ offlineQueue: [] });
+  },
+
+  updateProfile: async (updates) => {
+    try {
+      const res = await HealthProfileService.updateProfile(updates);
+      if (res.success) {
+        get().fetchDashboard();
+      }
+    } catch (err) {}
+  }
+}));
+
+// ==========================================
+// AI PLACEHOLDERS HOOKS
+// ==========================================
+
+export function useHealthCoach() {
+  return {
+    getCoachAdvice: async () => {
+      return "Keep hydrating! You're 500ml away from your water goal today. Your sleep quality has improved by 12% this week.";
+    },
+    isLoading: false,
+  };
+}
+
+export function useWorkoutSuggestions() {
+  return {
+    getSuggestions: async (category?: string) => {
+      const base = [
+        { title: "Core Blast", duration: 15, difficulty: "Medium", category: "Strength" },
+        { title: "HIIT Cardio Run", duration: 25, difficulty: "High", category: "Cardio" },
+        { title: "Gentle Evening Flow", duration: 20, difficulty: "Easy", category: "Yoga" },
+      ];
+      if (category) {
+        return base.filter(s => s.category.toLowerCase() === category.toLowerCase());
+      }
+      return base;
+    },
+    isLoading: false,
+  };
+}
+
+export function useWaterReminder() {
+  return {
+    remindersEnabled: true,
+    reminderIntervalMinutes: 120,
+    message: "Time to drink a glass of water to maintain your streak!",
+  };
+}
+
+export function useSleepAnalysis() {
+  return {
+    analyzeSleep: (sleepLogs: SleepLog[]) => {
+      if (sleepLogs.length === 0) return "No sleep data logged yet.";
+      const totalQuality = sleepLogs.reduce((sum, s) => sum + s.quality, 0);
+      const avgQuality = totalQuality / sleepLogs.length;
+      if (avgQuality >= 4) {
+        return "Excellent consistency! Your sleep quality is high. Keep your wake-up time within a 30-minute window.";
+      }
+      return "Your sleep quality shows some variance. Avoid screens for 1 hour before bed to increase deep sleep.";
+    },
+  };
+}
+

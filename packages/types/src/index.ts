@@ -242,3 +242,329 @@ export interface DashboardData {
   calendar: CalendarEvent[];
   notes: Note[];
 }
+
+// ==========================================
+// HEALTH MODULE TYPES
+// ==========================================
+
+export interface HealthProfile {
+  id: string;
+  userId: string;
+  height: number | null;
+  weight: number | null;
+  targetWeight: number | null;
+  waterGoal: number;
+  sleepGoal: number;
+  workoutGoal: number;
+  cycleGoal: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WaterLog {
+  id: string;
+  userId: string;
+  amount: number;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SleepLog {
+  id: string;
+  userId: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  quality: number;
+  notes: string | null;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkoutExercise {
+  id: string;
+  workoutId: string;
+  name: string;
+  sets: number | null;
+  reps: number | null;
+  weight: number | null;
+  duration: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Workout {
+  id: string;
+  userId: string;
+  title: string;
+  category: string;
+  duration: number;
+  calories: number | null;
+  notes: string | null;
+  date: string;
+  exercises?: WorkoutExercise[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WeightLog {
+  id: string;
+  userId: string;
+  weight: number;
+  bmi: number | null;
+  chest: number | null;
+  waist: number | null;
+  hips: number | null;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MedicationLog {
+  id: string;
+  medicationId: string;
+  takenAt: string;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Medication {
+  id: string;
+  userId: string;
+  name: string;
+  dosage: string;
+  schedule: string;
+  frequency: string;
+  startDate: string;
+  endDate: string | null;
+  remindersEnabled: boolean;
+  refillReminder: boolean;
+  active: boolean;
+  logs?: MedicationLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CycleSymptom {
+  id: string;
+  cycleId: string;
+  name: string;
+  severity: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Cycle {
+  id: string;
+  userId: string;
+  startDate: string;
+  endDate: string | null;
+  cycleLength: number | null;
+  symptoms?: CycleSymptom[];
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PCOSLog {
+  id: string;
+  userId: string;
+  symptoms: string[];
+  weight: number | null;
+  medicationTaken: boolean;
+  waterIntakeMl: number | null;
+  exerciseMinutes: number | null;
+  stressLevel: number | null;
+  notes: string | null;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HairLog {
+  id: string;
+  userId: string;
+  routineId: string | null;
+  washDone: boolean;
+  oilDone: boolean;
+  maskDone: boolean;
+  hairFallCount: number | null;
+  notes: string | null;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HairRoutine {
+  id: string;
+  userId: string;
+  name: string;
+  washDays: string[];
+  oilDays: string[];
+  maskDays: string[];
+  products: string[];
+  active: boolean;
+  logs?: HairLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SkinLog {
+  id: string;
+  userId: string;
+  routineId: string | null;
+  completed: boolean;
+  acneSeverity: string | null;
+  notes: string | null;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SkinRoutine {
+  id: string;
+  userId: string;
+  name: string;
+  products: string[];
+  concerns: string[];
+  active: boolean;
+  logs?: SkinLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MoodLog {
+  id: string;
+  userId: string;
+  mood: string;
+  energyLevel: number;
+  stressLevel: number;
+  notes: string | null;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HealthGoal {
+  id: string;
+  userId: string;
+  type: string; // WATER, SLEEP, WORKOUT, WEIGHT
+  target: number;
+  current: number;
+  startDate: string;
+  endDate: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HealthReminder {
+  id: string;
+  userId: string;
+  type: string; // WATER, SLEEP, WORKOUT, MEDICATION, GENERAL
+  time: string;
+  days: string[];
+  enabled: boolean;
+  message: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HealthDashboardData {
+  profile: HealthProfile | null;
+  todayWater: number;
+  waterGoal: number;
+  todaySleep: SleepLog | null;
+  sleepGoal: number;
+  todayWorkouts: Workout[];
+  workoutProgress: number;
+  workoutGoal: number;
+  currentWeight: number | null;
+  targetWeight: number | null;
+  medicationStatus: {
+    taken: number;
+    total: number;
+    list: Array<Medication & { takenToday: boolean }>;
+  };
+  cycleStatus: {
+    currentDay: number | null;
+    phase: string | null;
+    isPeriodToday: boolean;
+    daysUntilPeriod: number | null;
+  };
+  todayMood: MoodLog | null;
+  hairRoutineStatus: {
+    washDay: boolean;
+    oilDay: boolean;
+    maskDay: boolean;
+    washDone: boolean;
+    oilDone: boolean;
+    maskDone: boolean;
+  };
+  skinRoutineStatus: {
+    morningDone: boolean;
+    nightDone: boolean;
+  };
+  upcomingReminders: HealthReminder[];
+  weeklySummary: {
+    waterIntake: number[];
+    sleepDuration: number[];
+    workoutMinutes: number[];
+  };
+}
+
+export interface HealthReportData {
+  water: {
+    total: number;
+    average: number;
+    history: WaterLog[];
+  };
+  sleep: {
+    averageDuration: number;
+    averageQuality: number;
+    history: SleepLog[];
+  };
+  workout: {
+    totalWorkouts: number;
+    totalDuration: number;
+    history: Workout[];
+  };
+  weight: {
+    initial: number | null;
+    current: number | null;
+    change: number | null;
+    history: WeightLog[];
+  };
+  medication: {
+    adherenceRate: number;
+    history: MedicationLog[];
+  };
+  cycle: {
+    averageLength: number;
+    history: Cycle[];
+  };
+  pcos: {
+    symptomFrequency: Record<string, number>;
+    averageStress: number;
+    history: PCOSLog[];
+  };
+  mood: {
+    averageEnergy: number;
+    averageStress: number;
+    moodCounts: Record<string, number>;
+    history: MoodLog[];
+  };
+  hair: {
+    washDoneCount: number;
+    hairFallTrend: number[];
+    history: HairLog[];
+  };
+  skin: {
+    completionRate: number;
+    history: SkinLog[];
+  };
+}

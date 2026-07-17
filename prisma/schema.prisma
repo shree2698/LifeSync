@@ -40,22 +40,37 @@ enum HabitFrequency {
 }
 
 model User {
-  id             String          @id @default(uuid()) @db.Uuid
-  email          String          @unique
-  authProvider   String          @default("CLERK")
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  profile        Profile?
-  settings       Settings?
-  notifications  Notification[]
-  tasks          Task[]
-  labels         Label[]
-  habits         Habit[]
-  goals          Goal[]
-  folders        Folder[]
-  tags           Tag[]
-  notes          Note[]
-  calendarEvents CalendarEvent[]
+  id              String           @id @default(uuid()) @db.Uuid
+  email           String           @unique
+  authProvider    String           @default("CLERK")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  profile         Profile?
+  settings        Settings?
+  notifications   Notification[]
+  tasks           Task[]
+  labels          Label[]
+  habits          Habit[]
+  goals           Goal[]
+  folders         Folder[]
+  tags            Tag[]
+  notes           Note[]
+  calendarEvents  CalendarEvent[]
+  healthProfile   HealthProfile?
+  waterLogs       WaterLog[]
+  sleepLogs       SleepLog[]
+  workouts        Workout[]
+  weightLogs      WeightLog[]
+  medications     Medication[]
+  cycles          Cycle[]
+  pcosLogs        PCOSLog[]
+  hairRoutines    HairRoutine[]
+  hairLogs        HairLog[]
+  skinRoutines    SkinRoutine[]
+  skinLogs        SkinLog[]
+  moodLogs        MoodLog[]
+  healthGoals     HealthGoal[]
+  healthReminders HealthReminder[]
 
   @@map("users")
 }
@@ -295,4 +310,312 @@ model CalendarEvent {
   @@index([userId])
   @@index([start, end])
   @@map("calendar_events")
+}
+
+model HealthProfile {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @unique @db.Uuid
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  height       Float?
+  weight       Float?
+  targetWeight Float?
+  waterGoal    Int?     @default(2000) // in ml
+  sleepGoal    Float?   @default(8.0)  // in hours
+  workoutGoal  Int?     @default(150)  // in minutes per week
+  cycleGoal    Int?     @default(28)   // in days
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("health_profiles")
+}
+
+model WaterLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int      // in ml
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@map("water_logs")
+}
+
+model SleepLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startTime DateTime
+  endTime   DateTime
+  duration  Float    // in hours
+  quality   Int      // 1 to 5 rating
+  notes     String?  @db.Text
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@map("sleep_logs")
+}
+
+model Workout {
+  id        String            @id @default(uuid()) @db.Uuid
+  userId    String            @db.Uuid
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  category  String            // e.g. Strength, Cardio, Yoga, etc.
+  duration  Int               // in minutes
+  calories  Int?              // placeholder
+  notes     String?           @db.Text
+  date      DateTime          @default(now())
+  exercises WorkoutExercise[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@map("workouts")
+}
+
+model WorkoutExercise {
+  id        String   @id @default(uuid()) @db.Uuid
+  workoutId String   @db.Uuid
+  workout   Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  name      String
+  sets      Int?
+  reps      Int?
+  weight    Float?   // in kg
+  duration  Int?     // in seconds
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workoutId])
+  @@map("workout_exercises")
+}
+
+model WeightLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weight    Float    // in kg
+  bmi       Float?   // body mass index
+  chest     Float?   // in cm
+  waist     Float?   // in cm
+  hips      Float?   // in cm
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@map("weight_logs")
+}
+
+model Medication {
+  id               String          @id @default(uuid()) @db.Uuid
+  userId           String          @db.Uuid
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  dosage           String          // e.g. "500mg" or "1 pill"
+  schedule         String          // e.g. "Morning", "Night", or "14:30"
+  frequency        String          // e.g. "DAILY", "WEEKLY", "AS_NEEDED"
+  startDate        DateTime
+  endDate          DateTime?
+  remindersEnabled Boolean         @default(true)
+  refillReminder   Boolean         @default(false)
+  active           Boolean         @default(true)
+  logs             MedicationLog[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([userId])
+  @@map("medications")
+}
+
+model MedicationLog {
+  id           String     @id @default(uuid()) @db.Uuid
+  medicationId String     @db.Uuid
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  takenAt      DateTime   @default(now())
+  status       String     @default("TAKEN") // TAKEN, MISSED, SKIPPED
+  notes        String?    @db.Text
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([medicationId])
+  @@map("medication_logs")
+}
+
+model Cycle {
+  id          String         @id @default(uuid()) @db.Uuid
+  userId      String         @db.Uuid
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate   DateTime
+  endDate     DateTime?
+  cycleLength Int?
+  symptoms    CycleSymptom[]
+  notes       String?        @db.Text
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([userId])
+  @@map("cycles")
+}
+
+model CycleSymptom {
+  id        String   @id @default(uuid()) @db.Uuid
+  cycleId   String   @db.Uuid
+  cycle     Cycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  name      String   // e.g. Cramps, Headache, Bloating, Acne, Mood swings
+  severity  String?  // Mild, Moderate, Severe
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cycleId])
+  @@map("cycle_symptoms")
+}
+
+model PCOSLog {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symptoms        String[] // Array of symptoms
+  weight          Float?   // kg
+  medicationTaken Boolean  @default(false)
+  waterIntakeMl   Int?
+  exerciseMinutes Int?
+  stressLevel     Int?     // 1-5 or 1-10 scale
+  notes           String?  @db.Text
+  date            DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@map("pcos_logs")
+}
+
+model HairRoutine {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  washDays  String[]
+  oilDays   String[]
+  maskDays  String[]
+  products  String[]
+  active    Boolean   @default(true)
+  logs      HairLog[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("hair_routines")
+}
+
+model HairLog {
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String       @db.Uuid
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routineId     String?      @db.Uuid
+  routine       HairRoutine? @relation(fields: [routineId], references: [id], onDelete: SetNull)
+  washDone      Boolean      @default(false)
+  oilDone       Boolean      @default(false)
+  maskDone      Boolean      @default(false)
+  hairFallCount Int?         // tracking hair fall
+  notes         String?      @db.Text
+  date          DateTime     @default(now())
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@map("hair_logs")
+}
+
+model SkinRoutine {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String    // e.g. Morning, Night
+  products  String[]
+  concerns  String[]
+  active    Boolean   @default(true)
+  logs      SkinLog[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("skin_routines")
+}
+
+model SkinLog {
+  id           String       @id @default(uuid()) @db.Uuid
+  userId       String       @db.Uuid
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routineId    String?      @db.Uuid
+  routine      SkinRoutine? @relation(fields: [routineId], references: [id], onDelete: SetNull)
+  completed    Boolean      @default(false)
+  acneSeverity String?      // None, Mild, Moderate, Severe
+  notes        String?      @db.Text
+  date         DateTime     @default(now())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@map("skin_logs")
+}
+
+model MoodLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mood        String   // e.g. Happy, Sad, Calm, etc.
+  energyLevel Int
+  stressLevel Int
+  notes       String?  @db.Text
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@map("mood_logs")
+}
+
+model HealthGoal {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    // WATER, SLEEP, WORKOUT, WEIGHT
+  target    Float
+  current   Float     @default(0)
+  startDate DateTime
+  endDate   DateTime?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("health_goals")
+}
+
+model HealthReminder {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // WATER, SLEEP, WORKOUT, MEDICATION, GENERAL
+  time      String   // e.g. "08:00"
+  days      String[]
+  enabled   Boolean  @default(true)
+  message   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("health_reminders")
 }
