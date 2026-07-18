@@ -83,6 +83,14 @@ model User {
   transactionTags       TransactionTag[]
   recurringTransactions RecurringTransaction[]
   financialReports      FinancialReport[]
+  shoppingLists         ShoppingList[]
+  shoppingCategories    Category[]
+  monthlyEssentials     MonthlyEssential[]
+  pantryItems           PantryItem[]
+  wishlistItems         WishlistItem[]
+  purchaseHistories     PurchaseHistory[]
+  shoppingReports       ShoppingReport[]
+  shoppingTemplates     ShoppingTemplate[]
 
   @@map("users")
 }
@@ -906,4 +914,161 @@ model FinancialReport {
 
   @@index([userId])
   @@map("financial_reports")
+}
+
+model Category {
+  id            String         @id @default(uuid()) @db.Uuid
+  userId        String?        @db.Uuid
+  user          User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  color         String?
+  icon          String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  shoppingItems ShoppingItem[]
+  pantryItems   PantryItem[]
+  wishlistItems WishlistItem[]
+  monthlyEssentials MonthlyEssential[]
+
+  @@index([userId])
+  @@map("shopping_categories")
+}
+
+model ShoppingList {
+  id         String         @id @default(uuid()) @db.Uuid
+  userId     String         @db.Uuid
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  color      String?
+  icon       String?
+  isArchived Boolean        @default(false)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  items      ShoppingItem[]
+
+  @@index([userId])
+  @@map("shopping_lists")
+}
+
+model ShoppingItem {
+  id           String       @id @default(uuid()) @db.Uuid
+  listId       String       @db.Uuid
+  list         ShoppingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  categoryId   String?      @db.Uuid
+  category     Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  name         String
+  quantity     Float        @default(1)
+  unit         String       @default("pcs")
+  price        Float        @default(0)
+  isCompleted  Boolean      @default(false)
+  isFavorite   Boolean      @default(false)
+  notes        String?      @db.Text
+  purchasedAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([listId])
+  @@index([categoryId])
+  @@map("shopping_items")
+}
+
+model MonthlyEssential {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @db.Uuid
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  categoryId     String?   @db.Uuid
+  category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  targetQuantity Float     @default(1)
+  unit           String    @default("pcs")
+  estimatedPrice Float     @default(0)
+  isCompleted    Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([categoryId])
+  @@map("monthly_essentials")
+}
+
+model PantryItem {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  categoryId      String?   @db.Uuid
+  category        Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  currentQuantity Float     @default(0)
+  minimumQuantity Float     @default(0)
+  expiryDate      DateTime?
+  purchaseDate    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([categoryId])
+  @@map("pantry_items")
+}
+
+model WishlistItem {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  categoryId   String?   @db.Uuid
+  category     Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  desiredPrice Float     @default(0)
+  priority     String    @default("MEDIUM")
+  notes        String?   @db.Text
+  isPurchased  Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([categoryId])
+  @@map("wishlist_items")
+}
+
+model PurchaseHistory {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeName    String?
+  totalAmount  Float    @default(0)
+  itemsCount   Int      @default(0)
+  purchaseDate DateTime @default(now())
+  details      String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@map("purchase_histories")
+}
+
+model ShoppingReport {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   @default("MONTHLY")
+  startDate DateTime
+  endDate   DateTime
+  details   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("shopping_reports")
+}
+
+model ShoppingTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  items     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("shopping_templates")
 }

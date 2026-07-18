@@ -58,7 +58,18 @@ import {
   RecurringFrequency,
   BillStatus,
   SubscriptionStatus,
-  ReportType
+  ReportType,
+  Category,
+  ShoppingList,
+  ShoppingItem,
+  MonthlyEssential,
+  PantryItem,
+  WishlistItem,
+  PurchaseHistory,
+  ShoppingReport,
+  ShoppingTemplate,
+  ShoppingDashboardData,
+  ShoppingReportData
 } from "@lifesync/types";
 
 // ==========================================
@@ -2229,6 +2240,415 @@ export const FinanceService = {
         incomeVsExpense,
         savingsReport,
         budgetReport,
+      }
+    };
+  }
+};
+
+// ==========================================
+// SHOPPING MODULE MOCK DATASETS & SERVICES
+// ==========================================
+
+export let mockShoppingCategories: Category[] = [
+  { id: "scat-1", userId: null, name: "Groceries", color: "#10B981", icon: "shopping-bag", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "scat-2", userId: null, name: "Vegetables", color: "#34D399", icon: "leaf", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "scat-3", userId: null, name: "Fruits", color: "#F59E0B", icon: "apple", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "scat-4", userId: null, name: "Dairy", color: "#3B82F6", icon: "milk", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "scat-5", userId: null, name: "Snacks", color: "#EC4899", icon: "cookie", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "scat-6", userId: null, name: "Beverages", color: "#8B5CF6", icon: "cup-soda", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "scat-7", userId: null, name: "Cleaning", color: "#6B7280", icon: "sparkles", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "scat-8", userId: null, name: "Personal Care", color: "#10B981", icon: "heart", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "scat-9", userId: null, name: "Medicine", color: "#EF4444", icon: "pill", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "scat-10", userId: null, name: "Electronics", color: "#F43F5E", icon: "laptop", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "scat-11", userId: null, name: "Clothing", color: "#D946EF", icon: "shirt", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "scat-12", userId: null, name: "Home Essentials", color: "#E0F2FE", icon: "home", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockShoppingLists: ShoppingList[] = [
+  { id: "slist-1", userId: "u-1", name: "Weekly Groceries", color: "#10B981", icon: "shopping-cart", isArchived: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "slist-2", userId: "u-1", name: "Smart Home Upgrades", color: "#3B82F6", icon: "cpu", isArchived: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockShoppingItems: ShoppingItem[] = [
+  { id: "sitem-1", listId: "slist-1", categoryId: "scat-4", name: "Organic Whole Milk", quantity: 2, unit: "gallons", price: 5.49, isCompleted: false, isFavorite: true, notes: "Get the organic one", purchasedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "sitem-2", listId: "slist-1", categoryId: "scat-2", name: "Fresh Avocados", quantity: 4, unit: "pcs", price: 1.25, isCompleted: true, isFavorite: false, notes: "Slightly soft", purchasedAt: new Date().toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "sitem-3", listId: "slist-1", categoryId: "scat-3", name: "Red Apples", quantity: 1, unit: "bag", price: 4.99, isCompleted: false, isFavorite: false, notes: null, purchasedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "sitem-4", listId: "slist-2", categoryId: "scat-10", name: "Smart Plug WiFi", quantity: 1, unit: "pc", price: 19.99, isCompleted: false, isFavorite: false, notes: "Compatible with Alexa", purchasedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockMonthlyEssentials: MonthlyEssential[] = [
+  { id: "mess-1", userId: "u-1", name: "Dishwasher Pods", categoryId: "scat-7", targetQuantity: 1, unit: "pack", estimatedPrice: 14.99, isCompleted: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "mess-2", userId: "u-1", name: "Basmati Rice", categoryId: "scat-1", targetQuantity: 1, unit: "bag (10lbs)", estimatedPrice: 18.50, isCompleted: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "mess-3", userId: "u-1", name: "Toilet Paper Roll", categoryId: "scat-8", targetQuantity: 24, unit: "rolls", estimatedPrice: 12.99, isCompleted: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockPantryItems: PantryItem[] = [
+  { id: "pantry-1", userId: "u-1", name: "Olive Oil Bottle", categoryId: "scat-1", currentQuantity: 0.5, minimumQuantity: 1, expiryDate: "2027-12-31T00:00:00.000Z", purchaseDate: "2026-05-15T00:00:00.000Z", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "pantry-2", userId: "u-1", name: "Almond Butter", categoryId: "scat-5", currentQuantity: 0.2, minimumQuantity: 1, expiryDate: "2026-10-30T00:00:00.000Z", purchaseDate: "2026-06-01T00:00:00.000Z", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "pantry-3", userId: "u-1", name: "Greek Yogurt", categoryId: "scat-4", currentQuantity: 4, minimumQuantity: 2, expiryDate: "2026-08-05T00:00:00.000Z", purchaseDate: "2026-07-15T00:00:00.000Z", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockWishlistItems: WishlistItem[] = [
+  { id: "wish-1", userId: "u-1", name: "Mechanical Keyboard RGB", categoryId: "scat-10", desiredPrice: 120.00, priority: "HIGH", notes: "Cherry MX Brown switches", isPurchased: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "wish-2", userId: "u-1", name: "Running Shoes Carbon Plate", categoryId: "scat-11", desiredPrice: 180.00, priority: "MEDIUM", notes: "Nike Vaporfly size 10", isPurchased: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockPurchaseHistories: PurchaseHistory[] = [
+  { id: "phist-1", userId: "u-1", storeName: "Whole Foods Market", totalAmount: 48.75, itemsCount: 6, purchaseDate: "2026-07-10T14:30:00.000Z", details: "Milk, Apples, Avocados, Tomatoes, Bread, Eggs", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "phist-2", userId: "u-1", storeName: "Costco Wholesale", totalAmount: 142.50, itemsCount: 4, purchaseDate: "2026-06-25T11:00:00.000Z", details: "Detergent, Rice Bag, Chicken Breast, Paper Towels", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockShoppingReports: ShoppingReport[] = [];
+export let mockShoppingTemplates: ShoppingTemplate[] = [];
+
+// ==========================================
+// SERVICES IMPLEMENTATIONS
+// ==========================================
+
+export const ShoppingCategoryService = {
+  async getCategories(): Promise<ApiResponse<Category[]>> {
+    return { success: true, message: "Categories loaded", data: mockShoppingCategories };
+  },
+  async addCategory(data: Partial<Category>): Promise<ApiResponse<Category>> {
+    const newCat: Category = {
+      id: "scat-" + Math.floor(Math.random() * 10000),
+      userId: "u-1",
+      name: data.name || "Unnamed",
+      color: data.color || "#9CA3AF",
+      icon: data.icon || "shopping-bag",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    mockShoppingCategories.push(newCat);
+    return { success: true, message: "Category created", data: newCat };
+  }
+};
+
+export const ShoppingListService = {
+  async getLists(): Promise<ApiResponse<ShoppingList[]>> {
+    const active = mockShoppingLists.filter(l => !l.isArchived);
+    const populated = active.map(list => ({
+      ...list,
+      items: mockShoppingItems.filter(item => item.listId === list.id).map(item => ({
+        ...item,
+        category: mockShoppingCategories.find(c => c.id === item.categoryId) || null
+      }))
+    }));
+    return { success: true, message: "Shopping lists loaded", data: populated };
+  },
+
+  async addList(data: Partial<ShoppingList>): Promise<ApiResponse<ShoppingList>> {
+    const newList: ShoppingList = {
+      id: "slist-" + Math.floor(Math.random() * 10000),
+      userId: "u-1",
+      name: data.name || "New List",
+      color: data.color || "#6B7280",
+      icon: data.icon || "shopping-cart",
+      isArchived: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockShoppingLists.push(newList);
+    return { success: true, message: "Shopping list created", data: newList };
+  },
+
+  async renameList(id: string, name: string): Promise<ApiResponse<ShoppingList>> {
+    const list = mockShoppingLists.find(l => l.id === id);
+    if (!list) return { success: false, message: "List not found" };
+    list.name = name;
+    list.updatedAt = new Date().toISOString();
+    return { success: true, message: "List renamed", data: list };
+  },
+
+  async archiveList(id: string): Promise<ApiResponse<void>> {
+    const list = mockShoppingLists.find(l => l.id === id);
+    if (!list) return { success: false, message: "List not found" };
+    list.isArchived = true;
+    list.updatedAt = new Date().toISOString();
+    return { success: true, message: "List archived successfully" };
+  },
+
+  async deleteList(id: string): Promise<ApiResponse<void>> {
+    mockShoppingLists = mockShoppingLists.filter(l => l.id !== id);
+    mockShoppingItems = mockShoppingItems.filter(item => item.listId !== id);
+    return { success: true, message: "List deleted successfully" };
+  }
+};
+
+export const ShoppingItemService = {
+  async getItems(listId: string): Promise<ApiResponse<ShoppingItem[]>> {
+    const items = mockShoppingItems.filter(item => item.listId === listId).map(item => ({
+      ...item,
+      category: mockShoppingCategories.find(c => c.id === item.categoryId) || null
+    }));
+    return { success: true, message: "Items loaded", data: items };
+  },
+
+  async addItem(data: Partial<ShoppingItem>): Promise<ApiResponse<ShoppingItem>> {
+    if (!data.listId) return { success: false, message: "List ID is required" };
+    const newItem: ShoppingItem = {
+      id: "sitem-" + Math.floor(Math.random() * 10000),
+      listId: data.listId,
+      categoryId: data.categoryId || null,
+      name: data.name || "New Item",
+      quantity: data.quantity || 1,
+      unit: data.unit || "pcs",
+      price: data.price || 0,
+      isCompleted: false,
+      isFavorite: data.isFavorite || false,
+      notes: data.notes || null,
+      purchasedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockShoppingItems.push(newItem);
+    return { success: true, message: "Item added successfully", data: newItem };
+  },
+
+  async updateItem(id: string, data: Partial<ShoppingItem>): Promise<ApiResponse<ShoppingItem>> {
+    const item = mockShoppingItems.find(i => i.id === id);
+    if (!item) return { success: false, message: "Item not found" };
+    
+    if (data.name !== undefined) item.name = data.name;
+    if (data.quantity !== undefined) item.quantity = data.quantity;
+    if (data.unit !== undefined) item.unit = data.unit;
+    if (data.price !== undefined) item.price = data.price;
+    if (data.isCompleted !== undefined) {
+      item.isCompleted = data.isCompleted;
+      item.purchasedAt = data.isCompleted ? new Date().toISOString() : null;
+    }
+    if (data.isFavorite !== undefined) item.isFavorite = data.isFavorite;
+    if (data.notes !== undefined) item.notes = data.notes;
+    if (data.categoryId !== undefined) item.categoryId = data.categoryId;
+
+    item.updatedAt = new Date().toISOString();
+    return { success: true, message: "Item updated successfully", data: item };
+  },
+
+  async deleteItem(id: string): Promise<ApiResponse<void>> {
+    mockShoppingItems = mockShoppingItems.filter(i => i.id !== id);
+    return { success: true, message: "Item deleted successfully" };
+  }
+};
+
+export const MonthlyEssentialService = {
+  async getEssentials(): Promise<ApiResponse<MonthlyEssential[]>> {
+    const items = mockMonthlyEssentials.map(e => ({
+      ...e,
+      category: mockShoppingCategories.find(c => c.id === e.categoryId) || null
+    }));
+    return { success: true, message: "Monthly essentials loaded", data: items };
+  },
+
+  async addEssential(data: Partial<MonthlyEssential>): Promise<ApiResponse<MonthlyEssential>> {
+    const newEssential: MonthlyEssential = {
+      id: "mess-" + Math.floor(Math.random() * 10000),
+      userId: "u-1",
+      name: data.name || "Essential Item",
+      categoryId: data.categoryId || null,
+      targetQuantity: data.targetQuantity || 1,
+      unit: data.unit || "pcs",
+      estimatedPrice: data.estimatedPrice || 0,
+      isCompleted: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockMonthlyEssentials.push(newEssential);
+    return { success: true, message: "Essential item registered", data: newEssential };
+  },
+
+  async checkEssential(id: string, isCompleted: boolean): Promise<ApiResponse<MonthlyEssential>> {
+    const item = mockMonthlyEssentials.find(e => e.id === id);
+    if (!item) return { success: false, message: "Essential item not found" };
+    item.isCompleted = isCompleted;
+    item.updatedAt = new Date().toISOString();
+    return { success: true, message: "Status updated", data: item };
+  }
+};
+
+export const PantryService = {
+  async getPantry(): Promise<ApiResponse<PantryItem[]>> {
+    const items = mockPantryItems.map(p => ({
+      ...p,
+      category: mockShoppingCategories.find(c => c.id === p.categoryId) || null
+    }));
+    return { success: true, message: "Pantry inventory loaded", data: items };
+  },
+
+  async addPantryItem(data: Partial<PantryItem>): Promise<ApiResponse<PantryItem>> {
+    const newItem: PantryItem = {
+      id: "pantry-" + Math.floor(Math.random() * 10000),
+      userId: "u-1",
+      name: data.name || "Pantry Item",
+      categoryId: data.categoryId || null,
+      currentQuantity: data.currentQuantity || 0,
+      minimumQuantity: data.minimumQuantity || 0,
+      expiryDate: data.expiryDate || null,
+      purchaseDate: data.purchaseDate || new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockPantryItems.push(newItem);
+    return { success: true, message: "Pantry inventory item added", data: newItem };
+  },
+
+  async updateQuantity(id: string, currentQuantity: number): Promise<ApiResponse<PantryItem>> {
+    const item = mockPantryItems.find(p => p.id === id);
+    if (!item) return { success: false, message: "Pantry item not found" };
+    item.currentQuantity = currentQuantity;
+    item.updatedAt = new Date().toISOString();
+    return { success: true, message: "Quantity updated", data: item };
+  }
+};
+
+export const WishlistService = {
+  async getWishlist(): Promise<ApiResponse<WishlistItem[]>> {
+    const items = mockWishlistItems.map(w => ({
+      ...w,
+      category: mockShoppingCategories.find(c => c.id === w.categoryId) || null
+    }));
+    return { success: true, message: "Wishlist loaded", data: items };
+  },
+
+  async addWishlistItem(data: Partial<WishlistItem>): Promise<ApiResponse<WishlistItem>> {
+    const newItem: WishlistItem = {
+      id: "wish-" + Math.floor(Math.random() * 10000),
+      userId: "u-1",
+      name: data.name || "Wishlist Item",
+      categoryId: data.categoryId || null,
+      desiredPrice: data.desiredPrice || 0,
+      priority: data.priority || "MEDIUM",
+      notes: data.notes || null,
+      isPurchased: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockWishlistItems.push(newItem);
+    return { success: true, message: "Wishlist item added", data: newItem };
+  },
+
+  async markPurchased(id: string, isPurchased: boolean): Promise<ApiResponse<WishlistItem>> {
+    const item = mockWishlistItems.find(w => w.id === id);
+    if (!item) return { success: false, message: "Wishlist item not found" };
+    item.isPurchased = isPurchased;
+    item.updatedAt = new Date().toISOString();
+    return { success: true, message: "Wishlist item updated", data: item };
+  }
+};
+
+export const PurchaseHistoryService = {
+  async getHistory(): Promise<ApiResponse<PurchaseHistory[]>> {
+    return { success: true, message: "History loaded", data: mockPurchaseHistories };
+  },
+  async logPurchase(data: Partial<PurchaseHistory>): Promise<ApiResponse<PurchaseHistory>> {
+    const newHistory: PurchaseHistory = {
+      id: "phist-" + Math.floor(Math.random() * 10000),
+      userId: "u-1",
+      storeName: data.storeName || "Manual Checkout",
+      totalAmount: data.totalAmount || 0,
+      itemsCount: data.itemsCount || 0,
+      purchaseDate: data.purchaseDate || new Date().toISOString(),
+      details: data.details || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockPurchaseHistories.push(newHistory);
+    return { success: true, message: "Purchase logged successfully", data: newHistory };
+  }
+};
+
+export const ShoppingReportService = {
+  async getShoppingDashboard(): Promise<ApiResponse<ShoppingDashboardData>> {
+    const todayShopping = mockShoppingItems.filter(i => !i.isCompleted).map(item => ({
+      ...item,
+      category: mockShoppingCategories.find(c => c.id === item.categoryId) || null
+    }));
+    const pendingItemsCount = todayShopping.length;
+    const completedItemsCount = mockShoppingItems.filter(i => i.isCompleted).length;
+    const monthlyEssentialsCount = mockMonthlyEssentials.length;
+    const lowStockItems = mockPantryItems.filter(p => p.currentQuantity <= p.minimumQuantity).map(p => ({
+      ...p,
+      category: mockShoppingCategories.find(c => c.id === p.categoryId) || null
+    }));
+    const wishlistCount = mockWishlistItems.filter(w => !w.isPurchased).length;
+    const estimatedTotalCost = todayShopping.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const recentPurchases = mockPurchaseHistories.slice(0, 5);
+    const totalSpentThisMonth = mockPurchaseHistories.reduce((sum, p) => sum + p.totalAmount, 0);
+    const itemsBoughtThisMonth = mockPurchaseHistories.reduce((sum, p) => sum + p.itemsCount, 0);
+
+    return {
+      success: true,
+      message: "Dashboard aggregates loaded",
+      data: {
+        todayShopping,
+        pendingItemsCount,
+        completedItemsCount,
+        monthlyEssentialsCount,
+        lowStockItems,
+        wishlistCount,
+        estimatedTotalCost,
+        recentPurchases,
+        shoppingStatistics: { totalSpentThisMonth, itemsBoughtThisMonth }
+      }
+    };
+  },
+
+  async generateShoppingReport(): Promise<ApiResponse<ShoppingReportData>> {
+    const totalSpent = mockPurchaseHistories.reduce((sum, p) => sum + p.totalAmount, 0);
+    const totalItems = mockPurchaseHistories.reduce((sum, p) => sum + p.itemsCount, 0);
+
+    const categorySum = {} as Record<string, number>;
+    mockShoppingItems.forEach(i => {
+      const cat = mockShoppingCategories.find(c => c.id === i.categoryId);
+      const name = cat?.name || "Groceries";
+      categorySum[name] = (categorySum[name] || 0) + (i.price * i.quantity);
+    });
+
+    const totalCostSum = Object.values(categorySum).reduce((sum, a) => sum + a, 0) || 1;
+    const categoryBreakdown = Object.keys(categorySum).map(name => {
+      const amount = categorySum[name];
+      const cat = mockShoppingCategories.find(c => c.name === name);
+      return {
+        categoryId: cat?.id || "Other",
+        categoryName: name,
+        amount,
+        percentage: (amount / totalCostSum) * 100,
+        color: cat?.color || "#9CA3AF"
+      };
+    });
+
+    const frequentlyPurchasedItems = [
+      { name: "Organic Whole Milk", count: 8 },
+      { name: "Fresh Avocados", count: 5 },
+      { name: "Basmati Rice", count: 3 }
+    ];
+
+    const estimatedVsActualCost = [
+      { month: "May", estimated: 180, actual: 165 },
+      { month: "Jun", estimated: 220, actual: 242 },
+      { month: "Jul", estimated: 190, actual: totalSpent }
+    ];
+
+    const wishlistReport = mockWishlistItems.map(w => ({
+      ...w,
+      category: mockShoppingCategories.find(c => c.id === w.categoryId) || null
+    }));
+
+    const pantryReport = mockPantryItems.map(p => ({
+      ...p,
+      category: mockShoppingCategories.find(c => c.id === p.categoryId) || null
+    }));
+
+    return {
+      success: true,
+      message: "Report compiled",
+      data: {
+        monthlyShoppingSummary: { spent: totalSpent, itemsCount: totalItems },
+        categoryBreakdown,
+        frequentlyPurchasedItems,
+        estimatedVsActualCost,
+        wishlistReport,
+        pantryReport
       }
     };
   }

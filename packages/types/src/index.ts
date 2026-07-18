@@ -764,3 +764,142 @@ export interface FinanceReportData {
   budgetReport: { budgetId: string; budgetName: string; limit: number; spent: number; remaining: number }[];
 }
 
+// ==========================================
+// SHOPPING MODULE TYPES
+// ==========================================
+
+export interface Category {
+  id: string;
+  userId: string | null;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShoppingList {
+  id: string;
+  userId: string;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+  items?: ShoppingItem[];
+}
+
+export interface ShoppingItem {
+  id: string;
+  listId: string;
+  categoryId: string | null;
+  name: string;
+  quantity: number;
+  unit: string;
+  price: number;
+  isCompleted: boolean;
+  isFavorite: boolean;
+  notes: string | null;
+  purchasedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  category?: Category | null;
+}
+
+export interface MonthlyEssential {
+  id: string;
+  userId: string;
+  name: string;
+  categoryId: string | null;
+  targetQuantity: number;
+  unit: string;
+  estimatedPrice: number;
+  isCompleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+  category?: Category | null;
+}
+
+export interface PantryItem {
+  id: string;
+  userId: string;
+  name: string;
+  categoryId: string | null;
+  currentQuantity: number;
+  minimumQuantity: number;
+  expiryDate: string | null;
+  purchaseDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  category?: Category | null;
+}
+
+export interface WishlistItem {
+  id: string;
+  userId: string;
+  name: string;
+  categoryId: string | null;
+  desiredPrice: number;
+  priority: string;
+  notes: string | null;
+  isPurchased: boolean;
+  createdAt: string;
+  updatedAt: string;
+  category?: Category | null;
+}
+
+export interface PurchaseHistory {
+  id: string;
+  userId: string;
+  storeName: string | null;
+  totalAmount: number;
+  itemsCount: number;
+  purchaseDate: string;
+  details: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShoppingReport {
+  id: string;
+  userId: string;
+  type: string;
+  startDate: string;
+  endDate: string;
+  details: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShoppingTemplate {
+  id: string;
+  userId: string;
+  name: string;
+  items: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShoppingDashboardData {
+  todayShopping: ShoppingItem[];
+  pendingItemsCount: number;
+  completedItemsCount: number;
+  monthlyEssentialsCount: number;
+  lowStockItems: PantryItem[];
+  wishlistCount: number;
+  estimatedTotalCost: number;
+  recentPurchases: PurchaseHistory[];
+  shoppingStatistics: { totalSpentThisMonth: number; itemsBoughtThisMonth: number };
+}
+
+export interface ShoppingReportData {
+  monthlyShoppingSummary: { spent: number; itemsCount: number };
+  categoryBreakdown: { categoryId: string; categoryName: string; amount: number; percentage: number; color: string }[];
+  frequentlyPurchasedItems: { name: string; count: number }[];
+  estimatedVsActualCost: { month: string; estimated: number; actual: number }[];
+  wishlistReport: WishlistItem[];
+  pantryReport: PantryItem[];
+}
+
+

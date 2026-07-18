@@ -58,7 +58,18 @@ import {
   RecurringFrequency,
   BillStatus,
   SubscriptionStatus,
-  ReportType
+  ReportType,
+  Category,
+  ShoppingList,
+  ShoppingItem,
+  MonthlyEssential,
+  PantryItem,
+  WishlistItem,
+  PurchaseHistory,
+  ShoppingReport,
+  ShoppingTemplate,
+  ShoppingDashboardData,
+  ShoppingReportData
 } from "@lifesync/types";
 import {
   AuthService,
@@ -88,7 +99,15 @@ import {
   SavingsService,
   BillService,
   SubscriptionService,
-  FinanceService
+  FinanceService,
+  ShoppingCategoryService,
+  ShoppingListService,
+  ShoppingItemService,
+  MonthlyEssentialService,
+  PantryService,
+  WishlistService,
+  PurchaseHistoryService,
+  ShoppingReportService
 } from "@lifesync/services";
 
 // ==========================================
@@ -1709,5 +1728,506 @@ export function useExpensePrediction() {
     },
   };
 }
+
+// ==========================================
+// SHOPPING STORE & OFFLINE QUEUE
+// ==========================================
+
+export interface OfflineShoppingLog {
+  id: string;
+  type: "list" | "item" | "essential" | "pantry" | "wishlist" | "history" | "item_check" | "pantry_quantity" | "essential_check" | "wishlist_check";
+  payload: any;
+  timestamp: string;
+}
+
+interface ShoppingState {
+  shoppingDashboardData: ShoppingDashboardData | null;
+  shoppingReportData: ShoppingReportData | null;
+  shoppingLists: ShoppingList[];
+  shoppingCategories: Category[];
+  pantryItems: PantryItem[];
+  wishlistItems: WishlistItem[];
+  monthlyEssentials: MonthlyEssential[];
+  purchaseHistory: PurchaseHistory[];
+  offlineQueue: OfflineShoppingLog[];
+  isLoading: boolean;
+  error: string | null;
+
+  fetchDashboard: () => Promise<void>;
+  fetchReport: () => Promise<void>;
+  fetchLists: () => Promise<void>;
+  fetchCategories: () => Promise<void>;
+  fetchPantry: () => Promise<void>;
+  fetchWishlist: () => Promise<void>;
+  fetchEssentials: () => Promise<void>;
+  fetchHistory: () => Promise<void>;
+
+  addList: (name: string, color?: string | null, icon?: string | null) => Promise<void>;
+  renameList: (id: string, name: string) => Promise<void>;
+  archiveList: (id: string) => Promise<void>;
+  deleteList: (id: string) => Promise<void>;
+
+  addItem: (listId: string, name: string, quantity?: number, unit?: string, price?: number, categoryId?: string | null, notes?: string | null, isFavorite?: boolean) => Promise<void>;
+  updateItem: (id: string, data: { name?: string; quantity?: number; unit?: string; price?: number; isCompleted?: boolean; isFavorite?: boolean; notes?: string | null; categoryId?: string | null }) => Promise<void>;
+  deleteItem: (id: string) => Promise<void>;
+
+  addEssential: (name: string, targetQuantity: number, unit: string, estimatedPrice: number, categoryId?: string | null) => Promise<void>;
+  checkEssential: (id: string, isCompleted: boolean) => Promise<void>;
+
+  addPantryItem: (name: string, currentQuantity: number, minimumQuantity: number, expiryDate?: string | null, categoryId?: string | null) => Promise<void>;
+  updatePantryQuantity: (id: string, currentQuantity: number) => Promise<void>;
+
+  addWishlistItem: (name: string, desiredPrice: number, priority: string, notes?: string | null, categoryId?: string | null) => Promise<void>;
+  markWishlistPurchased: (id: string, isPurchased: boolean) => Promise<void>;
+
+  logPurchase: (storeName: string, totalAmount: number, itemsCount: number, purchaseDate?: string, details?: string | null) => Promise<void>;
+
+  addOfflineLog: (type: OfflineShoppingLog["type"], payload: any) => void;
+  syncOfflineQueue: () => Promise<void>;
+  clearOfflineQueue: () => void;
+}
+
+export const useShoppingStore = create<ShoppingState>((set, get) => ({
+  shoppingDashboardData: null,
+  shoppingReportData: null,
+  shoppingLists: [],
+  shoppingCategories: [],
+  pantryItems: [],
+  wishlistItems: [],
+  monthlyEssentials: [],
+  purchaseHistory: [],
+  offlineQueue: [],
+  isLoading: false,
+  error: null,
+
+  fetchDashboard: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await ShoppingReportService.getShoppingDashboard();
+      if (res.success && res.data) {
+        set({ shoppingDashboardData: res.data, isLoading: false });
+      } else {
+        set({ error: res.message, isLoading: false });
+      }
+    } catch (err: any) {
+      set({ error: err.message || "Failed to load dashboard data", isLoading: false });
+    }
+  },
+
+  fetchReport: async () => {
+    try {
+      const res = await ShoppingReportService.generateShoppingReport();
+      if (res.success && res.data) {
+        set({ shoppingReportData: res.data });
+      }
+    } catch (err) {}
+  },
+
+  fetchLists: async () => {
+    try {
+      const res = await ShoppingListService.getLists();
+      if (res.success && res.data) {
+        set({ shoppingLists: res.data });
+      }
+    } catch (err) {}
+  },
+
+  fetchCategories: async () => {
+    try {
+      const res = await ShoppingCategoryService.getCategories();
+      if (res.success && res.data) {
+        set({ shoppingCategories: res.data });
+      }
+    } catch (err) {}
+  },
+
+  fetchPantry: async () => {
+    try {
+      const res = await PantryService.getPantry();
+      if (res.success && res.data) {
+        set({ pantryItems: res.data });
+      }
+    } catch (err) {}
+  },
+
+  fetchWishlist: async () => {
+    try {
+      const res = await WishlistService.getWishlist();
+      if (res.success && res.data) {
+        set({ wishlistItems: res.data });
+      }
+    } catch (err) {}
+  },
+
+  fetchEssentials: async () => {
+    try {
+      const res = await MonthlyEssentialService.getEssentials();
+      if (res.success && res.data) {
+        set({ monthlyEssentials: res.data });
+      }
+    } catch (err) {}
+  },
+
+  fetchHistory: async () => {
+    try {
+      const res = await PurchaseHistoryService.getHistory();
+      if (res.success && res.data) {
+        set({ purchaseHistory: res.data });
+      }
+    } catch (err) {}
+  },
+
+  addList: async (name, color, icon) => {
+    // Optimistic Update
+    const currentLists = get().shoppingLists;
+    const temp: ShoppingList = {
+      id: "temp-list-" + Math.random(),
+      userId: "u-1",
+      name,
+      color: color || "#6B7280",
+      icon: icon || "shopping-cart",
+      isArchived: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      items: []
+    };
+    set({ shoppingLists: [...currentLists, temp] });
+
+    try {
+      const res = await ShoppingListService.addList({ name, color, icon });
+      if (res.success) {
+        get().fetchLists();
+      }
+    } catch (err) {
+      get().fetchLists();
+    }
+  },
+
+  renameList: async (id, name) => {
+    set({
+      shoppingLists: get().shoppingLists.map(l => l.id === id ? { ...l, name } : l)
+    });
+    try {
+      const res = await ShoppingListService.renameList(id, name);
+      if (res.success) {
+        get().fetchLists();
+      }
+    } catch (err) {
+      get().fetchLists();
+    }
+  },
+
+  archiveList: async (id) => {
+    set({
+      shoppingLists: get().shoppingLists.filter(l => l.id !== id)
+    });
+    try {
+      const res = await ShoppingListService.archiveList(id);
+      if (res.success) {
+        get().fetchLists();
+      }
+    } catch (err) {
+      get().fetchLists();
+    }
+  },
+
+  deleteList: async (id) => {
+    set({
+      shoppingLists: get().shoppingLists.filter(l => l.id !== id)
+    });
+    try {
+      const res = await ShoppingListService.deleteList(id);
+      if (res.success) {
+        get().fetchLists();
+        get().fetchDashboard();
+      }
+    } catch (err) {
+      get().fetchLists();
+    }
+  },
+
+  addItem: async (listId, name, quantity, unit, price, categoryId, notes, isFavorite) => {
+    try {
+      const res = await ShoppingItemService.addItem({
+        listId,
+        name,
+        quantity,
+        unit,
+        price,
+        categoryId,
+        notes,
+        isFavorite
+      });
+      if (res.success) {
+        get().fetchLists();
+        get().fetchDashboard();
+      }
+    } catch (err) {}
+  },
+
+  updateItem: async (id, data) => {
+    // Optimistic item check toggle
+    if (data.isCompleted !== undefined) {
+      set({
+        shoppingLists: get().shoppingLists.map(list => ({
+          ...list,
+          items: list.items?.map(i => i.id === id ? { ...i, isCompleted: data.isCompleted!, purchasedAt: data.isCompleted ? new Date().toISOString() : null } : i)
+        }))
+      });
+    }
+
+    try {
+      const res = await ShoppingItemService.updateItem(id, data);
+      if (res.success) {
+        get().fetchLists();
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {
+      get().fetchLists();
+    }
+  },
+
+  deleteItem: async (id) => {
+    try {
+      const res = await ShoppingItemService.deleteItem(id);
+      if (res.success) {
+        get().fetchLists();
+        get().fetchDashboard();
+      }
+    } catch (err) {}
+  },
+
+  addEssential: async (name, targetQuantity, unit, estimatedPrice, categoryId) => {
+    try {
+      const res = await MonthlyEssentialService.addEssential({
+        name,
+        targetQuantity,
+        unit,
+        estimatedPrice,
+        categoryId
+      });
+      if (res.success) {
+        get().fetchEssentials();
+        get().fetchDashboard();
+      }
+    } catch (err) {}
+  },
+
+  checkEssential: async (id, isCompleted) => {
+    set({
+      monthlyEssentials: get().monthlyEssentials.map(e => e.id === id ? { ...e, isCompleted } : e)
+    });
+
+    try {
+      const res = await MonthlyEssentialService.checkEssential(id, isCompleted);
+      if (res.success) {
+        get().fetchEssentials();
+        get().fetchDashboard();
+      }
+    } catch (err) {
+      get().fetchEssentials();
+    }
+  },
+
+  addPantryItem: async (name, currentQuantity, minimumQuantity, expiryDate, categoryId) => {
+    try {
+      const res = await PantryService.addPantryItem({
+        name,
+        currentQuantity,
+        minimumQuantity,
+        expiryDate,
+        categoryId
+      });
+      if (res.success) {
+        get().fetchPantry();
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  updatePantryQuantity: async (id, currentQuantity) => {
+    set({
+      pantryItems: get().pantryItems.map(p => p.id === id ? { ...p, currentQuantity } : p)
+    });
+
+    try {
+      const res = await PantryService.updateQuantity(id, currentQuantity);
+      if (res.success) {
+        get().fetchPantry();
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {
+      get().fetchPantry();
+    }
+  },
+
+  addWishlistItem: async (name, desiredPrice, priority, notes, categoryId) => {
+    try {
+      const res = await WishlistService.addWishlistItem({
+        name,
+        desiredPrice,
+        priority,
+        notes,
+        categoryId
+      });
+      if (res.success) {
+        get().fetchWishlist();
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  markWishlistPurchased: async (id, isPurchased) => {
+    set({
+      wishlistItems: get().wishlistItems.map(w => w.id === id ? { ...w, isPurchased } : w)
+    });
+
+    try {
+      const res = await WishlistService.markPurchased(id, isPurchased);
+      if (res.success) {
+        get().fetchWishlist();
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {
+      get().fetchWishlist();
+    }
+  },
+
+  logPurchase: async (storeName, totalAmount, itemsCount, purchaseDate, details) => {
+    try {
+      const res = await PurchaseHistoryService.logPurchase({
+        storeName,
+        totalAmount,
+        itemsCount,
+        purchaseDate,
+        details
+      });
+      if (res.success) {
+        get().fetchHistory();
+        get().fetchDashboard();
+        get().fetchReport();
+      }
+    } catch (err) {}
+  },
+
+  addOfflineLog: (type, payload) => {
+    const newLog: OfflineShoppingLog = {
+      id: "offline-s-" + Math.floor(Math.random() * 100000),
+      type,
+      payload,
+      timestamp: new Date().toISOString()
+    };
+
+    // Optimistic checking
+    if (type === "item_check") {
+      const { id, isCompleted } = payload;
+      set({
+        shoppingLists: get().shoppingLists.map(list => ({
+          ...list,
+          items: list.items?.map(i => i.id === id ? { ...i, isCompleted } : i)
+        }))
+      });
+    }
+
+    set({ offlineQueue: [...get().offlineQueue, newLog] });
+  },
+
+  syncOfflineQueue: async () => {
+    const queue = get().offlineQueue;
+    if (queue.length === 0) return;
+
+    set({ isLoading: true });
+
+    for (const item of queue) {
+      try {
+        if (item.type === "list") {
+          await ShoppingListService.addList(item.payload);
+        } else if (item.type === "item") {
+          await ShoppingItemService.addItem(item.payload);
+        } else if (item.type === "item_check") {
+          await ShoppingItemService.updateItem(item.payload.id, { isCompleted: item.payload.isCompleted });
+        } else if (item.type === "essential") {
+          await MonthlyEssentialService.addEssential(item.payload);
+        } else if (item.type === "essential_check") {
+          await MonthlyEssentialService.checkEssential(item.payload.id, item.payload.isCompleted);
+        } else if (item.type === "pantry") {
+          await PantryService.addPantryItem(item.payload);
+        } else if (item.type === "pantry_quantity") {
+          await PantryService.updateQuantity(item.payload.id, item.payload.currentQuantity);
+        } else if (item.type === "wishlist") {
+          await WishlistService.addWishlistItem(item.payload);
+        } else if (item.type === "wishlist_check") {
+          await WishlistService.markPurchased(item.payload.id, item.payload.isPurchased);
+        } else if (item.type === "history") {
+          await PurchaseHistoryService.logPurchase(item.payload);
+        }
+      } catch (err) {
+        console.error("Failed to sync offline shopping entry:", item, err);
+      }
+    }
+
+    set({ offlineQueue: [], isLoading: false });
+    await get().fetchDashboard();
+    await get().fetchReport();
+    await get().fetchLists();
+    await get().fetchPantry();
+    await get().fetchWishlist();
+    await get().fetchEssentials();
+    await get().fetchHistory();
+  },
+
+  clearOfflineQueue: () => {
+    set({ offlineQueue: [] });
+  }
+}));
+
+// ==========================================
+// AI PLACEHOLDERS LIFESTYLE HOOKS
+// ==========================================
+
+export function useShoppingAssistant() {
+  return {
+    getShoppingTips: async () => {
+      return "You frequently buy Organic Whole Milk. Checking local price trends, buying the 2-pack at Costco will save you $1.50 per gallon.";
+    },
+    isLoading: false
+  };
+}
+
+export function usePantrySuggestions() {
+  return {
+    getSuggestions: () => {
+      return [
+        { name: "Olive Oil Bottle", reason: "Current stock is 0.5. Suggested minimum is 1." },
+        { name: "Almond Butter", reason: "Stock is 0.2. Expiring in 3 months." }
+      ];
+    }
+  };
+}
+
+export function useMonthlyPlanner() {
+  return {
+    generateEssentialsChecklist: async () => {
+      return "Based on last month's inventory, you will need 1 pack of Dishwasher Pods and 24 rolls of Toilet Paper before the 25th.";
+    }
+  };
+}
+
+export function useMealPlanner() {
+  return {
+    getPlannedMeals: async () => {
+      return [
+        { day: "Monday", meal: "Avocado Toast & Scrambled Eggs", ingredients: ["Fresh Avocados", "Whole Wheat Bread", "Eggs"] },
+        { day: "Wednesday", meal: "Basmati Rice with Lentil Curry", ingredients: ["Basmati Rice", "Red Lentils", "Onions", "Coconuts"] }
+      ];
+    }
+  };
+}
+
 
 
