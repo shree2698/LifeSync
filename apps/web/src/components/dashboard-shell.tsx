@@ -25,6 +25,7 @@ import {
   Target,
   Clipboard,
   Calendar as CalendarIcon,
+  Layers,
 } from "lucide-react"
 import { useAuthStore, useNotificationStore, useThemeStore } from "@lifesync/hooks"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -86,6 +87,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
   const menuItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "AI Workspace", href: "/ai", icon: Sparkles },
+    { label: "Automations", href: "/automations", icon: Zap },
+    { label: "Integrations", href: "/integrations", icon: Layers },
     { label: "Tasks", href: "/tasks", icon: CheckSquare },
     { label: "Habits", href: "/habits", icon: Flame },
     { label: "Goals", href: "/goals", icon: Target },

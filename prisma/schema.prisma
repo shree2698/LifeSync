@@ -91,6 +91,16 @@ model User {
   purchaseHistories     PurchaseHistory[]
   shoppingReports       ShoppingReport[]
   shoppingTemplates     ShoppingTemplate[]
+  connections           Connection[]
+  integrationAudits     IntegrationAudit[]
+  conversations         Conversation[]
+  memories              Memory[]
+  aiUsages              AIUsage[]
+  aiSettings            AISettings?
+  toolExecutions        ToolExecution[]
+  workflows             Workflow[]
+  workflowExecutions    WorkflowExecution[]
+  automationSetting     AutomationSetting?
 
   @@map("users")
 }
@@ -1072,3 +1082,584 @@ model ShoppingTemplate {
   @@index([userId])
   @@map("shopping_templates")
 }
+
+model Integration {
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String
+  type        String
+  description String?
+  isEnabled   Boolean    @default(true)
+  logoUrl     String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  providers   Provider[]
+
+  @@map("integrations")
+}
+
+model Provider {
+  id            String       @id @default(uuid()) @db.Uuid
+  integrationId String       @db.Uuid
+  integration   Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  name          String
+  type          String
+  isEnabled     Boolean      @default(true)
+  config        String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  connections   Connection[]
+
+  @@index([integrationId])
+  @@map("providers")
+}
+
+model Connection {
+  id               String            @id @default(uuid()) @db.Uuid
+  userId           String            @db.Uuid
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId       String            @db.Uuid
+  provider         Provider          @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  isEnabled        Boolean           @default(true)
+  status           String            @default("CONNECTED")
+  lastSyncedAt     DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  oauthTokens      OAuthToken[]
+  refreshTokens    RefreshToken[]
+  webhooks         Webhook[]
+  syncJobs         SyncJob[]
+  permissions      Permission[]
+  providerSettings ProviderSetting[]
+  audits           IntegrationAudit[]
+
+  @@index([userId])
+  @@index([providerId])
+  @@map("connections")
+}
+
+model OAuthToken {
+  id           String     @id @default(uuid()) @db.Uuid
+  connectionId String     @db.Uuid
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  accessToken  String     @db.Text
+  expiresAt    DateTime?
+  scope        String?    @db.Text
+  tokenType    String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([connectionId])
+  @@map("oauth_tokens")
+}
+
+model RefreshToken {
+  id           String     @id @default(uuid()) @db.Uuid
+  connectionId String     @db.Uuid
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  token        String     @db.Text
+  expiresAt    DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([connectionId])
+  @@map("refresh_tokens")
+}
+
+model Webhook {
+  id           String     @id @default(uuid()) @db.Uuid
+  connectionId String     @db.Uuid
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  url          String     @db.Text
+  secret       String?    @db.Text
+  isEnabled    Boolean    @default(true)
+  events       String?    @db.Text
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([connectionId])
+  @@map("webhooks")
+}
+
+model SyncJob {
+  id            String     @id @default(uuid()) @db.Uuid
+  connectionId  String     @db.Uuid
+  connection    Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  status        String     @default("PENDING")
+  scheduledTime DateTime?
+  startedAt     DateTime?
+  endedAt       DateTime?
+  type          String     @default("MANUAL")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  syncLogs      SyncLog[]
+
+  @@index([connectionId])
+  @@map("sync_jobs")
+}
+
+model SyncLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  syncJobId String   @db.Uuid
+  syncJob   SyncJob  @relation(fields: [syncJobId], references: [id], onDelete: Cascade)
+  level     String   @default("INFO")
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([syncJobId])
+  @@map("sync_logs")
+}
+
+model Permission {
+  id           String     @id @default(uuid()) @db.Uuid
+  connectionId String     @db.Uuid
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  scope        String
+  isGranted    Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([connectionId])
+  @@map("permissions")
+}
+
+model ProviderSetting {
+  id           String     @id @default(uuid()) @db.Uuid
+  connectionId String     @db.Uuid
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  key          String
+  value        String     @db.Text
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([connectionId])
+  @@map("provider_settings")
+}
+
+model IntegrationAudit {
+  id           String      @id @default(uuid()) @db.Uuid
+  userId       String      @db.Uuid
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId String?     @db.Uuid
+  connection   Connection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  action       String
+  details      String?     @db.Text
+  timestamp    DateTime    @default(now())
+
+  @@index([userId])
+  @@index([connectionId])
+  @@map("integration_audits")
+}
+
+// ==========================================
+// Phase 6 — AI Core & Platform Models
+// ==========================================
+
+enum AgentType {
+  PLANNER
+  PRODUCTIVITY
+  HEALTH
+  FINANCE
+  SHOPPING
+  CALENDAR
+  JOURNAL
+  NOTIFICATION
+  MEMORY
+  RESEARCH
+  AUTOMATION
+  CAREER_COACH
+  WELLNESS_COACH
+  ORCHESTRATOR
+}
+
+enum MemoryCategory {
+  PREFERENCE
+  GOAL
+  HABIT
+  HEALTH
+  FINANCE
+  SHOPPING
+  PERSONAL
+  SCHEDULE
+  WORK
+}
+
+enum MemoryType {
+  SHORT_TERM
+  LONG_TERM
+  SEMANTIC
+}
+
+enum AIProvider {
+  OPENAI
+  ANTHROPIC
+  GEMINI
+  OPENROUTER
+  LOCAL
+}
+
+enum MessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+  TOOL
+}
+
+model Conversation {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @db.Uuid
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String           @default("New Conversation")
+  isPinned    Boolean          @default(false)
+  isArchived  Boolean          @default(false)
+  summary     String?          @db.Text
+  agentType   AgentType        @default(ORCHESTRATOR)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  messages    Message[]
+  executions AgentExecution[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String       @db.Text
+  agentType      AgentType?
+  tokens         Int?         @default(0)
+  metadata       String?      @db.Text
+  toolCalls      String?      @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+model Agent {
+  id           String           @id @default(uuid()) @db.Uuid
+  type         AgentType        @unique
+  name         String
+  description  String           @db.Text
+  capabilities String           @db.Text
+  isSystem     Boolean          @default(true)
+  isEnabled    Boolean          @default(true)
+  config       String?          @db.Text
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  executions   AgentExecution[]
+
+  @@map("agents")
+}
+
+model AgentExecution {
+  id             String       @id @default(uuid()) @db.Uuid
+  agentId        String       @db.Uuid
+  agent          Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  conversationId String?      @db.Uuid
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  status         String       @default("COMPLETED")
+  input          String       @db.Text
+  output         String?      @db.Text
+  tokens         Int          @default(0)
+  latencyMs      Int          @default(0)
+  error          String?      @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([agentId])
+  @@index([conversationId])
+  @@map("agent_executions")
+}
+
+model PromptTemplate {
+  id           String    @id @default(uuid()) @db.Uuid
+  slug         String    @unique
+  version      Int       @default(1)
+  category     String
+  template     String    @db.Text
+  systemPrompt String?   @db.Text
+  description  String?   @db.Text
+  isDefault    Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("prompt_templates")
+}
+
+model Memory {
+  id          String         @id @default(uuid()) @db.Uuid
+  userId      String         @db.Uuid
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    MemoryCategory
+  key         String
+  value       String         @db.Text
+  confidence  Float          @default(1.0)
+  source      String         @default("USER")
+  memoryType  MemoryType     @default(LONG_TERM)
+  expiresAt   DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([category])
+  @@map("memories")
+}
+
+model MemoryEmbedding {
+  id        String   @id @default(uuid()) @db.Uuid
+  memoryId  String   @db.Uuid
+  vector    String   @db.Text // Store vector representation as JSON/String stringified
+  dimensions Int      @default(1536)
+  createdAt DateTime @default(now())
+
+  @@index([memoryId])
+  @@map("memory_embeddings")
+}
+
+model ToolExecution {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  toolName  String
+  input     String   @db.Text
+  output    String?  @db.Text
+  status    String   @default("SUCCESS")
+  latencyMs Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([toolName])
+  @@map("tool_executions")
+}
+
+model AIUsage {
+  id           String     @id @default(uuid()) @db.Uuid
+  userId       String     @db.Uuid
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     AIProvider
+  model        String
+  inputTokens  Int        @default(0)
+  outputTokens Int        @default(0)
+  totalTokens  Int        @default(0)
+  costEstimate Float      @default(0.0)
+  latencyMs    Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("ai_usages")
+}
+
+model AISettings {
+  id               String     @id @default(uuid()) @db.Uuid
+  userId           String     @unique @db.Uuid
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  defaultProvider  AIProvider @default(OPENAI)
+  defaultModel     String     @default("gpt-4o")
+  temperature      Float      @default(0.7)
+  autoSummarize    Boolean    @default(true)
+  memoryEnabled    Boolean    @default(true)
+  webSearchEnabled Boolean    @default(false)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@map("ai_settings")
+}
+
+// ==========================================
+// PHASE 8 — AUTOMATION & WORKFLOW ENGINE
+// ==========================================
+
+enum WorkflowStatus {
+  ACTIVE
+  INACTIVE
+  PAUSED
+  DRAFT
+}
+
+enum WorkflowTriggerType {
+  CRON
+  EVENT
+  WEBHOOK
+  AI_SUGGESTION
+  MANUAL
+}
+
+enum WorkflowActionType {
+  CREATE_TASK
+  SCHEDULE_EVENT
+  SEND_NOTIFICATION
+  DISPATCH_EMAIL
+  UPLOAD_MEDIA
+  FETCH_WEATHER
+  RUN_AI_AGENT
+}
+
+enum ExecutionStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+  PENDING_CONFIRMATION
+}
+
+model Workflow {
+  id           String              @id @default(uuid()) @db.Uuid
+  userId       String              @db.Uuid
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?             @db.Text
+  status       WorkflowStatus      @default(ACTIVE)
+  isAiGenerated Boolean            @default(false)
+  isDestructive Boolean            @default(false)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  triggers     WorkflowTrigger[]
+  actions      WorkflowAction[]
+  executions   WorkflowExecution[]
+  schedules    WorkflowSchedule[]
+  variables    WorkflowVariable[]
+  conditions   WorkflowCondition[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("workflows")
+}
+
+model WorkflowTrigger {
+  id          String              @id @default(uuid()) @db.Uuid
+  workflowId  String              @db.Uuid
+  workflow    Workflow            @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  type        WorkflowTriggerType
+  config      String              @db.Text
+  providerId  String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([workflowId])
+  @@map("workflow_triggers")
+}
+
+model WorkflowCondition {
+  id          String   @id @default(uuid()) @db.Uuid
+  workflowId  String   @db.Uuid
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  field       String
+  operator    String   @default("EQUALS")
+  value       String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workflowId])
+  @@map("workflow_conditions")
+}
+
+model WorkflowAction {
+  id           String             @id @default(uuid()) @db.Uuid
+  workflowId   String             @db.Uuid
+  workflow     Workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  type         WorkflowActionType
+  orderIndex   Int                @default(0)
+  config       String             @db.Text
+  providerId   String?
+  isDestructive Boolean           @default(false)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([workflowId])
+  @@map("workflow_actions")
+}
+
+model WorkflowExecution {
+  id         String          @id @default(uuid()) @db.Uuid
+  workflowId String          @db.Uuid
+  workflow   Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  userId     String          @db.Uuid
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status     ExecutionStatus @default(RUNNING)
+  startedAt  DateTime        @default(now())
+  endedAt    DateTime?
+  durationMs Int?
+  error      String?         @db.Text
+  logs       ExecutionLog[]
+
+  @@index([workflowId])
+  @@index([userId])
+  @@index([status])
+  @@map("workflow_executions")
+}
+
+model ExecutionLog {
+  id          String            @id @default(uuid()) @db.Uuid
+  executionId String            @db.Uuid
+  execution   WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  level       String            @default("INFO")
+  message     String            @db.Text
+  stepIndex   Int?
+  createdAt   DateTime          @default(now())
+
+  @@index([executionId])
+  @@map("execution_logs")
+}
+
+model WorkflowTemplate {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  category    String
+  description String   @db.Text
+  isOfficial  Boolean  @default(true)
+  config      String   @db.Text
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("workflow_templates")
+}
+
+model WorkflowVariable {
+  id         String   @id @default(uuid()) @db.Uuid
+  workflowId String   @db.Uuid
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  key        String
+  value      String   @db.Text
+  isSecret   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([workflowId])
+  @@map("workflow_variables")
+}
+
+model AutomationSetting {
+  id                     String   @id @default(uuid()) @db.Uuid
+  userId                 String   @unique @db.Uuid
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  autoApproveSafeWorkflows Boolean @default(true)
+  confirmDestructive     Boolean  @default(true)
+  maxDailyExecutions     Int      @default(100)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("automation_settings")
+}
+
+model WorkflowSchedule {
+  id            String    @id @default(uuid()) @db.Uuid
+  workflowId    String    @db.Uuid
+  workflow      Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  cronExpression String
+  nextRunAt     DateTime?
+  lastRunAt     DateTime?
+  isEnabled     Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([workflowId])
+  @@map("workflow_schedules")
+}
+
+

@@ -901,5 +901,407 @@ export interface ShoppingReportData {
   wishlistReport: WishlistItem[];
   pantryReport: PantryItem[];
 }
+// ==========================================
+// INTEGRATION PLATFORM TYPES
+// ==========================================
+
+export interface Integration {
+  id: string;
+  name: string;
+  type: string; // e.g. GOOGLE, MICROSOFT, CLOUDINARY, FIREBASE
+  description: string | null;
+  isEnabled: boolean;
+  logoUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+  providers?: Provider[];
+}
+
+export interface Provider {
+  id: string;
+  integrationId: string;
+  name: string;
+  type: string; // OAUTH, API_KEY
+  isEnabled: boolean;
+  config: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Connection {
+  id: string;
+  userId: string;
+  providerId: string;
+  isEnabled: boolean;
+  status: string; // CONNECTED, DISCONNECTED, ERROR
+  lastSyncedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  provider?: Provider;
+  oauthTokens?: OAuthToken[];
+  refreshTokens?: RefreshToken[];
+}
+
+export interface OAuthToken {
+  id: string;
+  connectionId: string;
+  accessToken: string;
+  expiresAt: string | null;
+  scope: string | null;
+  tokenType: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RefreshToken {
+  id: string;
+  connectionId: string;
+  token: string;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Webhook {
+  id: string;
+  connectionId: string;
+  url: string;
+  secret: string | null;
+  isEnabled: boolean;
+  events: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SyncJob {
+  id: string;
+  connectionId: string;
+  status: string; // PENDING, RUNNING, COMPLETED, FAILED
+  scheduledTime: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  type: string; // MANUAL, SCHEDULED, AUTO
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SyncLog {
+  id: string;
+  syncJobId: string;
+  level: string; // INFO, WARNING, ERROR
+  message: string;
+  createdAt: string;
+}
+
+export interface Permission {
+  id: string;
+  connectionId: string;
+  scope: string;
+  isGranted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProviderSetting {
+  id: string;
+  connectionId: string;
+  key: string;
+  value: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IntegrationAudit {
+  id: string;
+  userId: string;
+  connectionId: string | null;
+  action: string;
+  details: string | null;
+  timestamp: string;
+}
+
+export interface IntegrationDashboardData {
+  connections: (Connection & { provider: Provider })[];
+  availableIntegrations: Integration[];
+  syncHistory: (SyncJob & { connection: Connection & { provider: Provider } })[];
+  auditLogs: IntegrationAudit[];
+  providerHealth: { providerName: string; status: string; lastChecked: string }[];
+}
+
+// ==========================================
+// PHASE 6 — AI CORE & PLATFORM TYPES
+// ==========================================
+
+export type AgentType =
+  | "PLANNER"
+  | "PRODUCTIVITY"
+  | "HEALTH"
+  | "FINANCE"
+  | "SHOPPING"
+  | "CALENDAR"
+  | "JOURNAL"
+  | "NOTIFICATION"
+  | "MEMORY"
+  | "RESEARCH"
+  | "AUTOMATION"
+  | "CAREER_COACH"
+  | "WELLNESS_COACH"
+  | "ORCHESTRATOR";
+
+export type MemoryCategory =
+  | "PREFERENCE"
+  | "GOAL"
+  | "HABIT"
+  | "HEALTH"
+  | "FINANCE"
+  | "SHOPPING"
+  | "PERSONAL"
+  | "SCHEDULE"
+  | "WORK";
+
+export type MemoryType = "SHORT_TERM" | "LONG_TERM" | "SEMANTIC";
+
+export type AIProvider = "OPENAI" | "ANTHROPIC" | "GEMINI" | "OPENROUTER" | "LOCAL";
+
+export type MessageRole = "SYSTEM" | "USER" | "ASSISTANT" | "TOOL";
+
+export interface Conversation {
+  id: string;
+  userId: string;
+  title: string;
+  isPinned: boolean;
+  isArchived: boolean;
+  summary?: string | null;
+  agentType: AgentType;
+  createdAt: string;
+  updatedAt: string;
+  messages?: Message[];
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  role: MessageRole;
+  content: string;
+  agentType?: AgentType | null;
+  tokens?: number | null;
+  metadata?: string | null;
+  toolCalls?: string | null;
+  createdAt: string;
+}
+
+export interface AgentInfo {
+  id: string;
+  type: AgentType;
+  name: string;
+  description: string;
+  capabilities: string[];
+  isSystem: boolean;
+  isEnabled: boolean;
+}
+
+export interface MemoryItem {
+  id: string;
+  userId: string;
+  category: MemoryCategory;
+  key: string;
+  value: string;
+  confidence: number;
+  source: string;
+  memoryType: MemoryType;
+  expiresAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromptTemplate {
+  id: string;
+  slug: string;
+  version: number;
+  category: string;
+  template: string;
+  systemPrompt?: string | null;
+  description?: string | null;
+  isDefault: boolean;
+}
+
+export interface ToolCallSpec {
+  toolName: string;
+  input: Record<string, any>;
+  output?: Record<string, any>;
+  status?: "SUCCESS" | "FAILED" | "PENDING";
+}
+
+export interface ToolExecutionResult {
+  toolName: string;
+  success: boolean;
+  data: any;
+  error?: string;
+  latencyMs: number;
+}
+
+export interface AIUsageStats {
+  provider: AIProvider;
+  model: string;
+  totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  costEstimate: number;
+  latencyMs: number;
+}
+
+export interface AISettings {
+  id: string;
+  userId: string;
+  defaultProvider: AIProvider;
+  defaultModel: string;
+  temperature: number;
+  autoSummarize: boolean;
+  memoryEnabled: boolean;
+  webSearchEnabled: boolean;
+}
+
+export interface DashboardAISummary {
+  todaysSummary: string;
+  priorityTasks: { id: string; title: string; priority: string; dueDate?: string }[];
+  healthInsights: string[];
+  financeSummary: { totalIncome: number; totalExpenses: number; netSavings: number; summary: string };
+  shoppingSuggestions: string[];
+  upcomingEvents: { id: string; title: string; time: string }[];
+  dailyFocus: string;
+}
+
+// ==========================================
+// PHASE 8 — AUTOMATION & WORKFLOW ENGINE TYPES
+// ==========================================
+
+export type WorkflowStatus = "ACTIVE" | "INACTIVE" | "PAUSED" | "DRAFT";
+
+export type WorkflowTriggerType = "CRON" | "EVENT" | "WEBHOOK" | "AI_SUGGESTION" | "MANUAL";
+
+export type WorkflowActionType =
+  | "CREATE_TASK"
+  | "SCHEDULE_EVENT"
+  | "SEND_NOTIFICATION"
+  | "DISPATCH_EMAIL"
+  | "UPLOAD_MEDIA"
+  | "FETCH_WEATHER"
+  | "RUN_AI_AGENT";
+
+export type ExecutionStatus = "RUNNING" | "SUCCESS" | "FAILED" | "CANCELLED" | "PENDING_CONFIRMATION";
+
+export interface WorkflowTrigger {
+  id: string;
+  workflowId: string;
+  type: WorkflowTriggerType;
+  config: string;
+  providerId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowAction {
+  id: string;
+  workflowId: string;
+  type: WorkflowActionType;
+  orderIndex: number;
+  config: string;
+  providerId?: string | null;
+  isDestructive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExecutionLog {
+  id: string;
+  executionId: string;
+  level: string;
+  message: string;
+  stepIndex?: number | null;
+  createdAt: string;
+}
+
+export interface WorkflowExecution {
+  id: string;
+  workflowId: string;
+  userId: string;
+  status: ExecutionStatus;
+  startedAt: string;
+  endedAt?: string | null;
+  durationMs?: number | null;
+  error?: string | null;
+  logs?: ExecutionLog[];
+}
+
+export interface WorkflowSchedule {
+  id: string;
+  workflowId: string;
+  cronExpression: string;
+  nextRunAt?: string | null;
+  lastRunAt?: string | null;
+  isEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowCondition {
+  id: string;
+  workflowId: string;
+  field: string;
+  operator: "EQUALS" | "CONTAINS" | "GREATER_THAN" | "LESS_THAN" | "NOT_EQUALS";
+  value: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowVariable {
+  id: string;
+  workflowId: string;
+  key: string;
+  value: string;
+  isSecret: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Workflow {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string | null;
+  status: WorkflowStatus;
+  isAiGenerated: boolean;
+  isDestructive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  triggers?: WorkflowTrigger[];
+  conditions?: WorkflowCondition[];
+  actions?: WorkflowAction[];
+  executions?: WorkflowExecution[];
+  schedules?: WorkflowSchedule[];
+  variables?: WorkflowVariable[];
+}
+
+export interface WorkflowTemplate {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  isOfficial: boolean;
+  config: string;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutomationSetting {
+  id: string;
+  userId: string;
+  autoApproveSafeWorkflows: boolean;
+  confirmDestructive: boolean;
+  maxDailyExecutions: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 

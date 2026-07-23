@@ -69,7 +69,26 @@ import {
   ShoppingReport,
   ShoppingTemplate,
   ShoppingDashboardData,
-  ShoppingReportData
+  ShoppingReportData,
+  Integration,
+  Provider as IntegrationProvider,
+  Connection as ProviderConnection,
+  OAuthToken,
+  RefreshToken,
+  Webhook,
+  SyncJob,
+  SyncLog,
+  Permission,
+  ProviderSetting,
+  IntegrationAudit,
+  IntegrationDashboardData,
+  Conversation,
+  Message,
+  AgentInfo,
+  MemoryItem,
+  AISettings,
+  DashboardAISummary,
+  AgentType
 } from "@lifesync/types";
 
 // ==========================================
@@ -2653,4 +2672,571 @@ export const ShoppingReportService = {
     };
   }
 };
+
+// ==========================================
+// INTEGRATION MODULE MOCK DATASETS & SERVICES
+// ==========================================
+
+export let mockIntegrations: Integration[] = [
+  { id: "int-1", name: "Google Workspace", type: "GOOGLE", description: "Sync Google Calendar, Tasks, Drive, Contacts, and Gmail context.", isEnabled: true, logoUrl: "https://logo.clearbit.com/google.com", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "int-2", name: "Microsoft 365", type: "MICROSOFT", description: "Sync Outlook Calendar, Microsoft To Do, and OneDrive storage.", isEnabled: true, logoUrl: "https://logo.clearbit.com/microsoft.com", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "int-3", name: "Cloudinary", type: "CLOUDINARY", description: "Cloud storage for optimized media uploads and avatar processing.", isEnabled: true, logoUrl: "https://logo.clearbit.com/cloudinary.com", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "int-4", name: "Firebase", type: "FIREBASE", description: "Cloud messaging for instant push reminders and cross-platform syncing.", isEnabled: true, logoUrl: "https://logo.clearbit.com/firebase.com", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockProviders: IntegrationProvider[] = [
+  { id: "prov-1", integrationId: "int-1", name: "Google Calendar", type: "OAUTH", isEnabled: true, config: "{}", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "prov-2", integrationId: "int-1", name: "Google Tasks", type: "OAUTH", isEnabled: true, config: "{}", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "prov-3", integrationId: "int-1", name: "Google Drive", type: "OAUTH", isEnabled: true, config: "{}", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "prov-4", integrationId: "int-1", name: "Gmail Context", type: "OAUTH", isEnabled: true, config: "{}", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "prov-5", integrationId: "int-1", name: "Google Contacts", type: "OAUTH", isEnabled: true, config: "{}", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "prov-6", integrationId: "int-1", name: "Google Maps", type: "API_KEY", isEnabled: true, config: "{}", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  
+  { id: "prov-7", integrationId: "int-2", name: "Outlook Calendar", type: "OAUTH", isEnabled: true, config: "{}", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "prov-8", integrationId: "int-2", name: "Microsoft To Do", type: "OAUTH", isEnabled: true, config: "{}", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "prov-9", integrationId: "int-2", name: "OneDrive Storage", type: "OAUTH", isEnabled: true, config: "{}", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  
+  { id: "prov-10", integrationId: "int-3", name: "Cloudinary Engine", type: "API_KEY", isEnabled: true, config: "{}", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "prov-11", integrationId: "int-4", name: "Firebase Messenger", type: "API_KEY", isEnabled: true, config: "{}", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockConnections: ProviderConnection[] = [
+  { id: "conn-1", userId: "u-1", providerId: "prov-1", isEnabled: true, status: "CONNECTED", lastSyncedAt: new Date().toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "conn-2", userId: "u-1", providerId: "prov-2", isEnabled: true, status: "CONNECTED", lastSyncedAt: new Date().toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockOAuthTokens: OAuthToken[] = [
+  { id: "tok-1", connectionId: "conn-1", accessToken: "gcal_access_token_mock_123", expiresAt: new Date(Date.now() + 3600000).toISOString(), scope: "calendar.readonly calendar.events", tokenType: "Bearer", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "tok-2", connectionId: "conn-2", accessToken: "gtasks_access_token_mock_123", expiresAt: new Date(Date.now() + 3600000).toISOString(), scope: "tasks", tokenType: "Bearer", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockRefreshTokens: RefreshToken[] = [
+  { id: "ref-1", connectionId: "conn-1", token: "gcal_refresh_token_mock_456", expiresAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: "ref-2", connectionId: "conn-2", token: "gtasks_refresh_token_mock_456", expiresAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockWebhooks: Webhook[] = [];
+export let mockSyncJobs: SyncJob[] = [
+  { id: "job-1", connectionId: "conn-1", status: "COMPLETED", scheduledTime: null, startedAt: new Date(Date.now() - 60000).toISOString(), endedAt: new Date().toISOString(), type: "MANUAL", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockSyncLogs: SyncLog[] = [
+  { id: "log-1", syncJobId: "job-1", level: "INFO", message: "Starting Google Calendar sync job.", createdAt: new Date().toISOString() },
+  { id: "log-2", syncJobId: "job-1", level: "INFO", message: "Processed 5 calendar event changes.", createdAt: new Date().toISOString() },
+  { id: "log-3", syncJobId: "job-1", level: "INFO", message: "Google Calendar sync completed successfully.", createdAt: new Date().toISOString() }
+];
+
+export let mockPermissions: Permission[] = [
+  { id: "perm-1", connectionId: "conn-1", scope: "calendar.events", isGranted: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
+export let mockProviderSettings: ProviderSetting[] = [];
+
+export let mockIntegrationAudits: IntegrationAudit[] = [
+  { id: "aud-1", userId: "u-1", connectionId: "conn-1", action: "CONNECT", details: "Connected Google Calendar OAuth successfully.", timestamp: new Date().toISOString() }
+];
+
+// ==========================================
+// REUSABLE PROVIDER SDK COMMON INTERFACE
+// ==========================================
+
+export interface IProviderSDK {
+  connect: (connectionId: string) => Promise<ApiResponse<any>>;
+  disconnect: (connectionId: string) => Promise<ApiResponse<any>>;
+  refresh: (connectionId: string) => Promise<ApiResponse<any>>;
+  sync: (connectionId: string) => Promise<ApiResponse<any>>;
+  validate: (connectionId: string) => Promise<ApiResponse<boolean>>;
+  getCapabilities: () => string[];
+  healthCheck: () => Promise<ApiResponse<string>>;
+}
+
+// Google Provider Implementation
+export const GoogleProviderService: IProviderSDK = {
+  async connect(connectionId: string) {
+    return { success: true, message: "Google connected", data: { connectionId } };
+  },
+  async disconnect(connectionId: string) {
+    return { success: true, message: "Google disconnected" };
+  },
+  async refresh(connectionId: string) {
+    return { success: true, message: "Google tokens refreshed", data: { accessToken: "g_new_access_token_" + Math.random() } };
+  },
+  async sync(connectionId: string) {
+    return { success: true, message: "Google Workspace sync successful" };
+  },
+  async validate(connectionId: string) {
+    return { success: true, message: "Google connection valid", data: true };
+  },
+  getCapabilities() {
+    return ["CALENDAR_READ_WRITE", "TASKS_READ_WRITE", "DRIVE_ACCESS", "EMAIL_METADATA", "CONTACTS_READ"];
+  },
+  async healthCheck() {
+    return { success: true, message: "Google APIs healthy", data: "UP" };
+  }
+};
+
+// Microsoft Provider Implementation
+export const MicrosoftProviderService: IProviderSDK = {
+  async connect(connectionId: string) {
+    return { success: true, message: "Microsoft connected", data: { connectionId } };
+  },
+  async disconnect(connectionId: string) {
+    return { success: true, message: "Microsoft disconnected" };
+  },
+  async refresh(connectionId: string) {
+    return { success: true, message: "Microsoft tokens refreshed", data: { accessToken: "ms_new_access_token_" + Math.random() } };
+  },
+  async sync(connectionId: string) {
+    return { success: true, message: "Microsoft Outlook sync successful" };
+  },
+  async validate(connectionId: string) {
+    return { success: true, message: "Microsoft connection valid", data: true };
+  },
+  getCapabilities() {
+    return ["CALENDAR_READ_WRITE", "TASKS_READ_WRITE", "DRIVE_ACCESS", "EMAIL_METADATA"];
+  },
+  async healthCheck() {
+    return { success: true, message: "Microsoft Graph healthy", data: "UP" };
+  }
+};
+
+// ==========================================
+// INTEGRATIONS SERVICES
+// ==========================================
+
+export const IntegrationService = {
+  async getIntegrations(): Promise<ApiResponse<Integration[]>> {
+    const list = mockIntegrations.map(integration => ({
+      ...integration,
+      providers: mockProviders.filter(p => p.integrationId === integration.id)
+    }));
+    return { success: true, message: "Integrations loaded", data: list };
+  }
+};
+
+export const ProviderService = {
+  async getProviders(): Promise<ApiResponse<IntegrationProvider[]>> {
+    return { success: true, message: "Providers loaded", data: mockProviders };
+  }
+};
+
+export const ConnectionService = {
+  async getConnections(): Promise<ApiResponse<(ProviderConnection & { provider: IntegrationProvider })[]>> {
+    const populated = mockConnections.map(c => {
+      const prov = mockProviders.find(p => p.id === c.providerId);
+      return {
+        ...c,
+        provider: prov!
+      };
+    });
+    return { success: true, message: "Connections loaded", data: populated };
+  },
+
+  async addConnection(providerId: string): Promise<ApiResponse<ProviderConnection>> {
+    const prov = mockProviders.find(p => p.id === providerId);
+    if (!prov) return { success: false, message: "Provider not found" };
+
+    const newConn: ProviderConnection = {
+      id: "conn-" + Math.floor(Math.random() * 10000),
+      userId: "u-1",
+      providerId,
+      isEnabled: true,
+      status: "CONNECTED",
+      lastSyncedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockConnections.push(newConn);
+
+    // Seed mock token
+    const newTok: OAuthToken = {
+      id: "tok-" + Math.floor(Math.random() * 10000),
+      connectionId: newConn.id,
+      accessToken: "mock_access_token_" + Math.random(),
+      expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      scope: "read write",
+      tokenType: "Bearer",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockOAuthTokens.push(newTok);
+
+    // Audit log
+    mockIntegrationAudits.push({
+      id: "aud-" + Math.floor(Math.random() * 10000),
+      userId: "u-1",
+      connectionId: newConn.id,
+      action: "CONNECT",
+      details: `Connected ${prov.name} successfully.`,
+      timestamp: new Date().toISOString()
+    });
+
+    return { success: true, message: "Connected successfully", data: newConn };
+  },
+
+  async deleteConnection(id: string): Promise<ApiResponse<void>> {
+    mockConnections = mockConnections.filter(c => c.id !== id);
+    mockOAuthTokens = mockOAuthTokens.filter(t => t.connectionId !== id);
+    mockRefreshTokens = mockRefreshTokens.filter(r => r.connectionId !== id);
+
+    mockIntegrationAudits.push({
+      id: "aud-" + Math.floor(Math.random() * 10000),
+      userId: "u-1",
+      connectionId: null,
+      action: "DISCONNECT",
+      details: `Disconnected connection ${id} successfully.`,
+      timestamp: new Date().toISOString()
+    });
+
+    return { success: true, message: "Disconnected successfully" };
+  }
+};
+
+export const OAuthService = {
+  async handleCallback(providerId: string, code: string): Promise<ApiResponse<ProviderConnection>> {
+    return ConnectionService.addConnection(providerId);
+  }
+};
+
+export const SyncService = {
+  async getSyncHistory(): Promise<ApiResponse<(SyncJob & { connection: ProviderConnection & { provider: IntegrationProvider } })[]>> {
+    const list = mockSyncJobs.map(job => {
+      const conn = mockConnections.find(c => c.id === job.connectionId);
+      const prov = mockProviders.find(p => p.id === conn?.providerId);
+      return {
+        ...job,
+        connection: {
+          ...conn!,
+          provider: prov!
+        }
+      };
+    });
+    return { success: true, message: "Sync history loaded", data: list };
+  },
+
+  async triggerSync(connectionId: string): Promise<ApiResponse<SyncJob>> {
+    const conn = mockConnections.find(c => c.id === connectionId);
+    if (!conn) return { success: false, message: "Connection not found" };
+
+    const newJob: SyncJob = {
+      id: "job-" + Math.floor(Math.random() * 10000),
+      connectionId,
+      status: "COMPLETED",
+      scheduledTime: null,
+      startedAt: new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+      type: "MANUAL",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockSyncJobs.push(newJob);
+
+    mockSyncLogs.push({
+      id: "log-" + Math.floor(Math.random() * 10000),
+      syncJobId: newJob.id,
+      level: "INFO",
+      message: `Triggered manual synchronization.`,
+      createdAt: new Date().toISOString()
+    });
+
+    conn.lastSyncedAt = new Date().toISOString();
+
+    return { success: true, message: "Sync completed successfully", data: newJob };
+  }
+};
+
+export const WebhookService = {
+  async getWebhooks(): Promise<ApiResponse<Webhook[]>> {
+    return { success: true, message: "Webhooks loaded", data: mockWebhooks };
+  },
+  async registerWebhook(connectionId: string, url: string, events: string[]): Promise<ApiResponse<Webhook>> {
+    const newWebhook: Webhook = {
+      id: "web-" + Math.floor(Math.random() * 10000),
+      connectionId,
+      url,
+      secret: "whsec_" + Math.floor(Math.random() * 1000000),
+      isEnabled: true,
+      events: JSON.stringify(events),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockWebhooks.push(newWebhook);
+    return { success: true, message: "Webhook registered successfully", data: newWebhook };
+  }
+};
+
+export const UploadService = {
+  async handleUpload(fileName: string, mimeType: string, sizeBytes: number): Promise<ApiResponse<{ url: string; key: string }>> {
+    const randomKey = "upload_" + Math.floor(Math.random() * 10000000) + "_" + fileName;
+    const mockUrl = `https://res.cloudinary.com/lifesync/image/upload/v12345/${randomKey}`;
+    return {
+      success: true,
+      message: "File uploaded successfully to Cloudinary storage",
+      data: { url: mockUrl, key: randomKey }
+    };
+  }
+};
+
+export const IntegrationDashboardService = {
+  async getDashboard(): Promise<ApiResponse<IntegrationDashboardData>> {
+    const connectionsPop = mockConnections.map(c => {
+      const prov = mockProviders.find(p => p.id === c.providerId);
+      return {
+        ...c,
+        provider: prov!
+      };
+    });
+
+    const syncHistoryPop = mockSyncJobs.map(job => {
+      const conn = mockConnections.find(c => c.id === job.connectionId);
+      const prov = mockProviders.find(p => p.id === conn?.providerId);
+      return {
+        ...job,
+        connection: {
+          ...conn!,
+          provider: prov!
+        }
+      };
+    });
+
+    const providerHealth = mockProviders.map(p => {
+      const conn = mockConnections.find(c => c.providerId === p.id);
+      return {
+        providerName: p.name,
+        status: conn ? conn.status : "DISCONNECTED",
+        lastChecked: new Date().toISOString()
+      };
+    });
+
+    return {
+      success: true,
+      message: "Integration dashboard loaded",
+      data: {
+        connections: connectionsPop,
+        availableIntegrations: mockIntegrations,
+        syncHistory: syncHistoryPop,
+        auditLogs: mockIntegrationAudits,
+        providerHealth
+      }
+    };
+  }
+};
+
+// ==========================================
+// PHASE 6 — AI PLATFORM SERVICE
+// ==========================================
+
+import { AIOrchestrator } from "../../ai/src/orchestrator/ai-orchestrator";
+import { AgentManager } from "../../ai/src/agents/agent-manager";
+import { ConversationEngine } from "../../ai/src/engine/conversation-engine";
+import { MemoryPlatform } from "../../ai/src/memory/memory-platform";
+import { ToolRegistry } from "../../ai/src/tools/tool-registry";
+import { AIGateway } from "../../ai/src/security/gateway";
+import { AIObservability } from "../../ai/src/observability/tracker";
+
+export const AIService = {
+  async getDashboardAISummary(): Promise<ApiResponse<DashboardAISummary>> {
+    return {
+      success: true,
+      message: "AI Dashboard Summary fetched successfully",
+      data: {
+        todaysSummary: "Good day! You have 2 high-priority tasks and 1 focus block recommended for this morning.",
+        priorityTasks: [
+          { id: "t1", title: "Complete Phase 6 AI Core Architecture", priority: "URGENT", dueDate: "Today" },
+          { id: "t2", title: "Review Weekly Habits and Daily Focus", priority: "HIGH", dueDate: "Today" },
+        ],
+        healthInsights: [
+          "Hydration check: You have consumed 1,500ml water today. Target: 3,000ml.",
+          "Sleep efficiency score: 84%. Recommended bedtime tonight: 10:30 PM.",
+        ],
+        financeSummary: {
+          totalIncome: 5000,
+          totalExpenses: 2150,
+          netSavings: 2850,
+          summary: "On track for this month's savings goal of $2,500.",
+        },
+        shoppingSuggestions: [
+          "Restock Greek Yogurt & Almond Milk from your low-stock pantry items.",
+        ],
+        upcomingEvents: [
+          { id: "c1", title: "AI Architecture Review", time: "10:00 AM - 11:00 AM" },
+          { id: "c2", title: "Team Sync & Planning", time: "03:00 PM - 04:00 PM" },
+        ],
+        dailyFocus: "Deep focus block scheduled between 9:00 AM - 11:30 AM.",
+      },
+    };
+  },
+
+  async chat(input: {
+    prompt: string;
+    conversationId?: string;
+    preferredAgent?: AgentType;
+  }): Promise<ApiResponse<{
+    conversationId: string;
+    response: string;
+    agentType: AgentType;
+    participatingAgents: AgentType[];
+    suggestedActions?: { label: string; action: string }[];
+    toolsUsed: string[];
+    latencyMs: number;
+  }>> {
+    const userId = mockUser?.id || "u-1";
+
+    let conversationId = input.conversationId;
+    if (!conversationId) {
+      const conv = await ConversationEngine.createConversation(userId, "New Conversation", input.preferredAgent || "ORCHESTRATOR");
+      conversationId = conv.id;
+    }
+
+    // Save user message
+    await ConversationEngine.addMessage(conversationId, "USER", input.prompt);
+
+    // Process via AI Orchestrator
+    const result = await AIOrchestrator.processRequest({
+      userId,
+      userPrompt: input.prompt,
+      conversationId,
+      preferredAgent: input.preferredAgent,
+    });
+
+    // Save assistant message
+    await ConversationEngine.addMessage(
+      conversationId,
+      "ASSISTANT",
+      result.content,
+      result.primaryAgent,
+      result.toolsUsed.length > 0 ? JSON.stringify(result.toolsUsed) : undefined
+    );
+
+    // Track execution observability
+    AIObservability.logExecution({
+      userId,
+      provider: "OPENAI",
+      model: "gpt-4o",
+      agentType: result.primaryAgent,
+      inputTokens: Math.ceil(input.prompt.length / 4),
+      outputTokens: Math.ceil(result.content.length / 4),
+      latencyMs: result.latencyMs,
+    });
+
+    return {
+      success: true,
+      message: "AI response generated successfully",
+      data: {
+        conversationId,
+        response: result.content,
+        agentType: result.primaryAgent,
+        participatingAgents: result.participatingAgents,
+        suggestedActions: result.suggestedActions,
+        toolsUsed: result.toolsUsed,
+        latencyMs: result.latencyMs,
+      },
+    };
+  },
+
+  async getConversations(includeArchived: boolean = false): Promise<ApiResponse<Conversation[]>> {
+    const userId = mockUser?.id || "u-1";
+    const list = await ConversationEngine.getConversations(userId, includeArchived);
+    return {
+      success: true,
+      message: "Conversations loaded",
+      data: list,
+    };
+  },
+
+  async getConversation(id: string): Promise<ApiResponse<Conversation | null>> {
+    const conv = await ConversationEngine.getConversation(id);
+    return {
+      success: true,
+      message: conv ? "Conversation retrieved" : "Conversation not found",
+      data: conv,
+    };
+  },
+
+  async createConversation(title?: string, agentType: AgentType = "ORCHESTRATOR"): Promise<ApiResponse<Conversation>> {
+    const userId = mockUser?.id || "u-1";
+    const conv = await ConversationEngine.createConversation(userId, title || "New Conversation", agentType);
+    return {
+      success: true,
+      message: "Conversation created",
+      data: conv,
+    };
+  },
+
+  async togglePinConversation(id: string): Promise<ApiResponse<{ isPinned: boolean }>> {
+    const isPinned = await ConversationEngine.togglePin(id);
+    return { success: true, message: "Pin status updated", data: { isPinned } };
+  },
+
+  async toggleArchiveConversation(id: string): Promise<ApiResponse<{ isArchived: boolean }>> {
+    const isArchived = await ConversationEngine.toggleArchive(id);
+    return { success: true, message: "Archive status updated", data: { isArchived } };
+  },
+
+  async deleteConversation(id: string): Promise<ApiResponse<boolean>> {
+    const deleted = await ConversationEngine.deleteConversation(id);
+    return { success: true, message: "Conversation deleted", data: deleted };
+  },
+
+  async searchConversations(query: string): Promise<ApiResponse<Conversation[]>> {
+    const userId = mockUser?.id || "u-1";
+    const results = await ConversationEngine.searchConversations(userId, query);
+    return { success: true, message: "Search completed", data: results };
+  },
+
+  async getMemories(category?: any): Promise<ApiResponse<MemoryItem[]>> {
+    const userId = mockUser?.id || "u-1";
+    const memories = await MemoryPlatform.getMemories(userId, category);
+    return { success: true, message: "Memories loaded", data: memories };
+  },
+
+  async storeMemory(params: { category: any; key: string; value: string }): Promise<ApiResponse<MemoryItem>> {
+    const userId = mockUser?.id || "u-1";
+    const item = await MemoryPlatform.storeMemory({
+      userId,
+      category: params.category,
+      key: params.key,
+      value: params.value,
+    });
+    return { success: true, message: "Memory saved", data: item };
+  },
+
+  async deleteMemory(id: string): Promise<ApiResponse<boolean>> {
+    const userId = mockUser?.id || "u-1";
+    const deleted = await MemoryPlatform.deleteMemory(userId, id);
+    return { success: true, message: "Memory deleted", data: deleted };
+  },
+
+  async clearMemories(): Promise<ApiResponse<boolean>> {
+    const userId = mockUser?.id || "u-1";
+    await MemoryPlatform.clearUserMemories(userId);
+    return { success: true, message: "All memories cleared", data: true };
+  },
+
+  async exportMemories(): Promise<ApiResponse<any>> {
+    const userId = mockUser?.id || "u-1";
+    const data = await MemoryPlatform.exportMemories(userId);
+    return { success: true, message: "Memory exported", data };
+  },
+
+  async getAgents(): Promise<ApiResponse<AgentInfo[]>> {
+    const agents = AgentManager.listAgents();
+    return { success: true, message: "Agents retrieved", data: agents };
+  },
+
+  async getTools(): Promise<ApiResponse<any[]>> {
+    const tools = ToolRegistry.listTools();
+    return { success: true, message: "Tools retrieved", data: tools };
+  },
+
+  async getObservabilityStats(): Promise<ApiResponse<any>> {
+    const userId = mockUser?.id || "u-1";
+    const stats = AIObservability.getUserStats(userId);
+    return { success: true, message: "Stats retrieved", data: stats };
+  },
+};
+
+export * from "./integrations";
+export * from "./automations";
+
 

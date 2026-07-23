@@ -5,6 +5,7 @@ import {
   Settings,
   Notification,
   ThemeMode,
+  AgentType,
   Task,
   Subtask,
   Label,
@@ -69,7 +70,23 @@ import {
   ShoppingReport,
   ShoppingTemplate,
   ShoppingDashboardData,
-  ShoppingReportData
+  ShoppingReportData,
+  Integration,
+  Provider as IntegrationProvider,
+  Connection as ProviderConnection,
+  OAuthToken,
+  RefreshToken,
+  Webhook,
+  SyncJob,
+  SyncLog,
+  Permission,
+  ProviderSetting,
+  IntegrationAudit,
+  IntegrationDashboardData,
+  Conversation,
+  Message,
+  AgentInfo,
+  MemoryItem
 } from "@lifesync/types";
 import {
   AuthService,
@@ -107,7 +124,13 @@ import {
   PantryService,
   WishlistService,
   PurchaseHistoryService,
-  ShoppingReportService
+  ShoppingReportService,
+  IntegrationDashboardService,
+  ConnectionService,
+  SyncService,
+  WebhookService,
+  UploadService,
+  ProviderService
 } from "@lifesync/services";
 
 // ==========================================
@@ -2228,6 +2251,587 @@ export function useMealPlanner() {
     }
   };
 }
+
+// ==========================================
+// INTEGRATIONS STORE
+// ==========================================
+
+interface IntegrationState {
+  dashboardData: IntegrationDashboardData | null;
+  connections: (ProviderConnection & { provider: IntegrationProvider })[];
+  availableIntegrations: Integration[];
+  syncHistory: (SyncJob & { connection: ProviderConnection & { provider: IntegrationProvider } })[];
+  auditLogs: IntegrationAudit[];
+  providerHealth: { providerName: string; status: string; lastChecked: string }[];
+  isLoading: boolean;
+  error: string | null;
+
+  fetchDashboard: () => Promise<void>;
+  connectProvider: (providerId: string) => Promise<void>;
+  disconnectProvider: (connectionId: string) => Promise<void>;
+  triggerSync: (connectionId: string) => Promise<void>;
+  registerWebhook: (connectionId: string, url: string, events: string[]) => Promise<void>;
+  uploadFile: (fileName: string, mimeType: string, sizeBytes: number) => Promise<{ url: string; key: string } | null>;
+}
+
+export const useIntegrationStore = create<IntegrationState>((set, get) => ({
+  dashboardData: null,
+  connections: [],
+  availableIntegrations: [],
+  syncHistory: [],
+  auditLogs: [],
+  providerHealth: [],
+  isLoading: false,
+  error: null,
+
+  fetchDashboard: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await IntegrationDashboardService.getDashboard();
+      if (res.success && res.data) {
+        set({
+          dashboardData: res.data,
+          connections: res.data.connections as any,
+          availableIntegrations: res.data.availableIntegrations,
+          syncHistory: res.data.syncHistory as any,
+          auditLogs: res.data.auditLogs,
+          providerHealth: res.data.providerHealth,
+          isLoading: false
+        });
+      } else {
+        set({ error: res.message, isLoading: false });
+      }
+    } catch (err: any) {
+      set({ error: err.message || "Failed to load dashboard data", isLoading: false });
+    }
+  },
+
+  connectProvider: async (providerId) => {
+    try {
+      const res = await ConnectionService.addConnection(providerId);
+      if (res.success) {
+        get().fetchDashboard();
+      }
+    } catch (err) {}
+  },
+
+  disconnectProvider: async (connectionId) => {
+    // Optimistic Update
+    set({
+      connections: get().connections.filter(c => c.id !== connectionId)
+    });
+
+    try {
+      const res = await ConnectionService.deleteConnection(connectionId);
+      if (res.success) {
+        get().fetchDashboard();
+      }
+    } catch (err) {
+      get().fetchDashboard();
+    }
+  },
+
+  triggerSync: async (connectionId) => {
+    try {
+      const res = await SyncService.triggerSync(connectionId);
+      if (res.success) {
+        get().fetchDashboard();
+      }
+    } catch (err) {}
+  },
+
+  registerWebhook: async (connectionId, url, events) => {
+    try {
+      await WebhookService.registerWebhook(connectionId, url, events);
+    } catch (err) {}
+  },
+
+  uploadFile: async (fileName, mimeType, sizeBytes) => {
+    try {
+      const res = await UploadService.handleUpload(fileName, mimeType, sizeBytes);
+      if (res.success && res.data) {
+        return res.data;
+      }
+      return null;
+    } catch (err) {
+      return null;
+    }
+  }
+}));
+
+// ==========================================
+// AI TOOL PROVIDERS INTEGRATIONS HOOKS
+// ==========================================
+
+export function useIntegrationTools() {
+  return {
+    getTools: () => {
+      return [
+        {
+          name: "google_calendar_tool",
+          description: "Read, create, update, and delete events in Google Calendar.",
+          parameters: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["list", "create", "update", "delete"] },
+              eventId: { type: "string" },
+              summary: { type: "string" },
+              startTime: { type: "string" },
+              endTime: { type: "string" }
+            }
+          }
+        },
+        {
+          name: "google_tasks_tool",
+          description: "Read, create, complete, and delete tasks in Google Tasks.",
+          parameters: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["list", "create", "complete", "delete"] },
+              taskId: { type: "string" },
+              title: { type: "string" }
+            }
+          }
+        },
+        {
+          name: "google_drive_tool",
+          description: "Upload, download, list, or delete files in Google Drive.",
+          parameters: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["list", "upload", "delete"] },
+              fileName: { type: "string" },
+              fileId: { type: "string" }
+            }
+          }
+        },
+        {
+          name: "google_maps_tool",
+          description: "Search places, get travel times, static maps, or compute route distances.",
+          parameters: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["search", "distance", "route"] },
+              origin: { type: "string" },
+              destination: { type: "string" }
+            }
+          }
+        },
+        {
+          name: "gmail_context_tool",
+          description: "Fetch email contexts, search mails, or preview inbox lists.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string" }
+            }
+          }
+        },
+        {
+          name: "cloudinary_storage_tool",
+          description: "Optimize, upload, or delete avatars, documents, or video files.",
+          parameters: {
+            type: "object",
+            properties: {
+              fileName: { type: "string" },
+              sizeBytes: { type: "number" }
+            }
+          }
+        }
+      ];
+    }
+  };
+}
+
+// ==========================================
+// PHASE 6 — GLOBAL AI ZUSTAND STORE
+// ==========================================
+
+import { AIService } from "@lifesync/services";
+
+interface AIState {
+  conversations: Conversation[];
+  activeConversationId: string | null;
+  activeAgentType: AgentType;
+  isGenerating: boolean;
+  isStreaming: boolean;
+  searchQuery: string;
+  memories: MemoryItem[];
+  agents: AgentInfo[];
+  tools: any[];
+  observabilityStats: any | null;
+  isLoading: boolean;
+  error: string | null;
+
+  fetchConversations: (includeArchived?: boolean) => Promise<void>;
+  selectConversation: (id: string | null) => void;
+  setActiveAgentType: (agentType: AgentType) => void;
+  setSearchQuery: (query: string) => void;
+  createConversation: (title?: string, agentType?: AgentType) => Promise<string>;
+  sendMessage: (prompt: string, preferredAgent?: AgentType) => Promise<void>;
+  togglePinConversation: (id: string) => Promise<void>;
+  toggleArchiveConversation: (id: string) => Promise<void>;
+  deleteConversation: (id: string) => Promise<void>;
+
+  fetchMemories: (category?: any) => Promise<void>;
+  storeMemory: (category: any, key: string, value: string) => Promise<void>;
+  deleteMemory: (id: string) => Promise<void>;
+  clearMemories: () => Promise<void>;
+  exportMemories: () => Promise<any>;
+
+  fetchAgents: () => Promise<void>;
+  fetchObservability: () => Promise<void>;
+}
+
+export const useAIStore = create<AIState>((set, get) => ({
+  conversations: [],
+  activeConversationId: null,
+  activeAgentType: "ORCHESTRATOR",
+  isGenerating: false,
+  isStreaming: false,
+  searchQuery: "",
+  memories: [],
+  agents: [],
+  tools: [],
+  observabilityStats: null,
+  isLoading: false,
+  error: null,
+
+  fetchConversations: async (includeArchived = false) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await AIService.getConversations(includeArchived);
+      if (res.success && res.data) {
+        set({
+          conversations: res.data,
+          activeConversationId: get().activeConversationId || (res.data.length > 0 ? res.data[0].id : null),
+          isLoading: false,
+        });
+      } else {
+        set({ error: res.message, isLoading: false });
+      }
+    } catch (err: any) {
+      set({ error: err.message || "Failed to load conversations", isLoading: false });
+    }
+  },
+
+  selectConversation: (id) => {
+    const conv = get().conversations.find((c) => c.id === id);
+    set({
+      activeConversationId: id,
+      activeAgentType: conv?.agentType || "ORCHESTRATOR",
+    });
+  },
+
+  setActiveAgentType: (agentType) => {
+    set({ activeAgentType: agentType });
+  },
+
+  setSearchQuery: (query) => {
+    set({ searchQuery: query });
+  },
+
+  createConversation: async (title, agentType) => {
+    const targetAgent = agentType || get().activeAgentType || "ORCHESTRATOR";
+    const res = await AIService.createConversation(title, targetAgent);
+    if (res.success && res.data) {
+      const newConv = res.data;
+      set({
+        conversations: [newConv, ...get().conversations],
+        activeConversationId: newConv.id,
+        activeAgentType: newConv.agentType,
+      });
+      return newConv.id;
+    }
+    throw new Error("Failed to create conversation");
+  },
+
+  sendMessage: async (prompt, preferredAgent) => {
+    if (!prompt.trim()) return;
+
+    let convId = get().activeConversationId;
+
+    // Create new conversation if none active
+    if (!convId) {
+      convId = await get().createConversation(prompt.slice(0, 30), preferredAgent || get().activeAgentType);
+    }
+
+    const agentToUse = preferredAgent || get().activeAgentType;
+
+    // Optimistic User Message
+    const userMsg: Message = {
+      id: `temp_msg_${Date.now()}`,
+      conversationId: convId,
+      role: "USER",
+      content: prompt,
+      agentType: agentToUse,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedConvs = get().conversations.map((c) => {
+      if (c.id === convId) {
+        return {
+          ...c,
+          updatedAt: new Date().toISOString(),
+          messages: [...(c.messages || []), userMsg],
+        };
+      }
+      return c;
+    });
+
+    set({
+      conversations: updatedConvs,
+      isGenerating: true,
+      error: null,
+    });
+
+    try {
+      const res = await AIService.chat({
+        prompt,
+        conversationId: convId,
+        preferredAgent: agentToUse,
+      });
+
+      if (res.success && res.data) {
+        const data = res.data;
+        const assistantMsg: Message = {
+          id: `msg_${Date.now()}`,
+          conversationId: convId,
+          role: "ASSISTANT",
+          content: data.response,
+          agentType: data.agentType,
+          toolCalls: data.toolsUsed.length > 0 ? JSON.stringify(data.toolsUsed) : undefined,
+          createdAt: new Date().toISOString(),
+        };
+
+        const refreshedConvs = get().conversations.map((c) => {
+          if (c.id === convId) {
+            return {
+              ...c,
+              updatedAt: new Date().toISOString(),
+              agentType: data.agentType,
+              messages: [...(c.messages || []).filter((m) => m.id !== userMsg.id), userMsg, assistantMsg],
+            };
+          }
+          return c;
+        });
+
+        set({
+          conversations: refreshedConvs,
+          activeAgentType: data.agentType,
+          isGenerating: false,
+        });
+      } else {
+        set({ error: res.message, isGenerating: false });
+      }
+    } catch (err: any) {
+      set({ error: err.message || "Failed to process AI response", isGenerating: false });
+    }
+  },
+
+  togglePinConversation: async (id) => {
+    set({
+      conversations: get().conversations.map((c) => (c.id === id ? { ...c, isPinned: !c.isPinned } : c)),
+    });
+    await AIService.togglePinConversation(id);
+  },
+
+  toggleArchiveConversation: async (id) => {
+    set({
+      conversations: get().conversations.filter((c) => c.id !== id),
+      activeConversationId: get().activeConversationId === id ? null : get().activeConversationId,
+    });
+    await AIService.toggleArchiveConversation(id);
+  },
+
+  deleteConversation: async (id) => {
+    set({
+      conversations: get().conversations.filter((c) => c.id !== id),
+      activeConversationId: get().activeConversationId === id ? null : get().activeConversationId,
+    });
+    await AIService.deleteConversation(id);
+  },
+
+  fetchMemories: async (category) => {
+    try {
+      const res = await AIService.getMemories(category);
+      if (res.success && res.data) {
+        set({ memories: res.data });
+      }
+    } catch (err) {}
+  },
+
+  storeMemory: async (category, key, value) => {
+    try {
+      const res = await AIService.storeMemory({ category, key, value });
+      if (res.success) {
+        get().fetchMemories();
+      }
+    } catch (err) {}
+  },
+
+  deleteMemory: async (id) => {
+    set({ memories: get().memories.filter((m) => m.id !== id) });
+    await AIService.deleteMemory(id);
+  },
+
+  clearMemories: async () => {
+    set({ memories: [] });
+    await AIService.clearMemories();
+  },
+
+  exportMemories: async () => {
+    const res = await AIService.exportMemories();
+    return res.data;
+  },
+
+  fetchAgents: async () => {
+    try {
+      const res = await AIService.getAgents();
+      if (res.success && res.data) {
+        set({ agents: res.data });
+      }
+    } catch (err) {}
+  },
+
+  fetchObservability: async () => {
+    try {
+      const res = await AIService.getObservabilityStats();
+      if (res.success && res.data) {
+        set({ observabilityStats: res.data });
+      }
+    } catch (err) {}
+  },
+}));
+
+// ==========================================
+// PHASE 8 — AUTOMATION & WORKFLOW STORE
+// ==========================================
+
+import {
+  Workflow,
+  WorkflowExecution,
+  WorkflowTemplate,
+} from "@lifesync/types";
+import { WorkflowEngine, AIWorkflowGenerator, OfficialWorkflowTemplates } from "@lifesync/services";
+
+interface AutomationState {
+  workflows: Workflow[];
+  executions: WorkflowExecution[];
+  templates: WorkflowTemplate[];
+  suggestions: any[];
+  isLoading: boolean;
+  isExecuting: boolean;
+
+  fetchWorkflows: () => void;
+  createWorkflow: (name: string, description: string, triggers: any[], actions: any[], isDestructive?: boolean) => Workflow;
+  executeWorkflow: (workflowId: string, forceBypassConfirmation?: boolean) => Promise<WorkflowExecution>;
+  generateAIWorkflow: (prompt: string) => Workflow;
+  fetchTemplates: () => void;
+  fetchSuggestions: () => Promise<void>;
+  toggleWorkflowStatus: (id: string) => void;
+  deleteWorkflow: (id: string) => void;
+}
+
+export const useAutomationStore = create<AutomationState>((set, get) => ({
+  workflows: [
+    {
+      id: "wf-1",
+      userId: "u-1",
+      name: "Daily Workday Morning Sync",
+      description: "Syncs Google Calendar focus time, creates Google Tasks, and sends weather alert.",
+      status: "ACTIVE",
+      isAiGenerated: false,
+      isDestructive: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      triggers: [{ id: "trig-1", workflowId: "wf-1", type: "CRON", config: "0 8 * * *", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }],
+      actions: [{ id: "act-1", workflowId: "wf-1", type: "CREATE_TASK", orderIndex: 0, config: "{}", isDestructive: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }],
+    },
+  ],
+  executions: [],
+  templates: OfficialWorkflowTemplates,
+  suggestions: [],
+  isLoading: false,
+  isExecuting: false,
+
+  fetchWorkflows: () => {
+    const list = WorkflowEngine.listWorkflows("u-1");
+    if (list.length > 0) {
+      set({ workflows: list });
+    }
+  },
+
+  createWorkflow: (name, description, triggers, actions, isDestructive = false) => {
+    const newWf: Workflow = {
+      id: `wf_${Date.now()}`,
+      userId: "u-1",
+      name,
+      description,
+      status: "ACTIVE",
+      isAiGenerated: false,
+      isDestructive,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      triggers,
+      actions,
+    };
+    WorkflowEngine.saveWorkflow(newWf);
+    set({ workflows: [newWf, ...get().workflows] });
+    return newWf;
+  },
+
+  executeWorkflow: async (workflowId, forceBypassConfirmation = false) => {
+    set({ isExecuting: true });
+    const res = await WorkflowEngine.executeWorkflow(workflowId, "u-1", "MANUAL", forceBypassConfirmation);
+    set({
+      isExecuting: false,
+      executions: [res.execution, ...get().executions],
+    });
+    return res.execution;
+  },
+
+  generateAIWorkflow: (prompt) => {
+    const wf = AIWorkflowGenerator.generateWorkflow(prompt, "u-1");
+    WorkflowEngine.saveWorkflow(wf);
+    set({ workflows: [wf, ...get().workflows] });
+    return wf;
+  },
+
+  fetchTemplates: () => {
+    set({ templates: OfficialWorkflowTemplates });
+  },
+
+  fetchSuggestions: async () => {
+    const sugs = await AIWorkflowGenerator.suggestWorkflows("u-1");
+    set({ suggestions: sugs });
+  },
+
+  toggleWorkflowStatus: (id) => {
+    const currentWfs = get().workflows;
+    const wf = currentWfs.find((w) => w.id === id);
+    if (wf) {
+      const newStatus = wf.status === "ACTIVE" ? "PAUSED" : "ACTIVE";
+      WorkflowEngine.updateWorkflowStatus(id, newStatus);
+      set({
+        workflows: currentWfs.map((w) => {
+          if (w.id === id) {
+            return { ...w, status: newStatus };
+          }
+          return w;
+        }),
+      });
+    }
+  },
+
+  deleteWorkflow: (id) => {
+    WorkflowEngine.deleteWorkflow(id);
+    set({ workflows: get().workflows.filter((w) => w.id !== id) });
+  },
+}));
+
+
+
 
 
 
